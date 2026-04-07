@@ -1,13 +1,13 @@
-const express = require('express');
-const { OpenAI } = require('openai');
-const { spawn } = require('child_process');
-const dotenv = require('dotenv');
-const cors = require('cors');
-const path = require('path');
-const swaggerUi = require('swagger-ui-express');
+import express, { Request, Response } from 'express';
+import { OpenAI } from 'openai';
+import { spawn } from 'child_process';
+import * as dotenv from 'dotenv';
+import cors from 'cors';
+import path from 'path';
+import swaggerUi from 'swagger-ui-express';
 
 // 1. 환경변수 및 초기 설정
-dotenv.config({ path: path.join(__dirname, '../backend/.env') }); 
+dotenv.config({ path: path.join(__dirname, '../../backend/.env') }); 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const app = express();
 const PORT = 3000;
@@ -15,13 +15,13 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-// 2. Swagger 명세 직접 정의 (누락 방지를 위해 객체로 관리)
-const swaggerDocument = {
+// 2. Swagger 명세 직접 정의
+const swaggerDocument: any = {
   openapi: '3.0.0',
   info: {
     title: 'Fin-Us Stock Analysis API (Express)',
     version: '1.0.0',
-    description: 'MCP 기반 뉴스 수집 및 GPT 분석 투자 에이전트 서비스 (Node.js/Express 구현체)',
+    description: 'MCP 기반 뉴스 수집 및 GPT 분석 투자 에이전트 서비스 (Node.js/Express/TypeScript 구현체)',
   },
   servers: [{ url: `http://localhost:${PORT}` }],
   tags: [
@@ -82,7 +82,7 @@ const swaggerDocument = {
 app.use('/swagger', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // 3. MCP 도구 호출 로직
-async function runMCPTool(toolName, args, scriptPath) {
+async function runMCPTool(toolName: string, args: any, scriptPath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn('node', [scriptPath]);
     const timeout = setTimeout(() => {
@@ -91,7 +91,7 @@ async function runMCPTool(toolName, args, scriptPath) {
     }, 15000);
 
     child.stdout.on('data', (data) => {
-      const lines = data.toString().split('\n').filter(l => l.trim());
+      const lines = data.toString().split('\n').filter((l: string) => l.trim());
       for (const line of lines) {
         try {
           const res = JSON.parse(line);
@@ -116,20 +116,20 @@ async function runMCPTool(toolName, args, scriptPath) {
 }
 
 // 4. API 엔드포인트 구현
-app.get('/api/v1/news', async (req, res) => {
+app.get('/api/v1/news', async (req: Request, res: Response): Promise<any> => {
   const { stock } = req.query;
   if (!stock) return res.status(400).json({ status: 'error', message: 'stock 파라미터가 필요합니다.' });
   try {
-    const news = await runMCPTool('get_market_news', { stock_name: stock }, path.join(__dirname, '../mcp-news/index.js'));
+    const news = await runMCPTool('get_market_news', { stock_name: stock }, path.join(__dirname, '../../mcp-news/index.js'));
     res.json({ status: 'success', data: { stock, news: news.split('\n') } });
-  } catch (err) { res.status(500).json({ status: 'error', message: err.message }); }
+  } catch (err: any) { res.status(500).json({ status: 'error', message: err.message }); }
 });
 
-app.get('/api/v1/analyze', async (req, res) => {
+app.get('/api/v1/analyze', async (req: Request, res: Response): Promise<any> => {
   const { stock } = req.query;
   if (!stock) return res.status(400).json({ status: 'error', message: 'stock 파라미터가 필요합니다.' });
   try {
-    const news = await runMCPTool('get_market_news', { stock_name: stock }, path.join(__dirname, '../mcp-news/index.js'));
+    const news = await runMCPTool('get_market_news', { stock_name: stock }, path.join(__dirname, '../../mcp-news/index.js'));
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -138,20 +138,21 @@ app.get('/api/v1/analyze', async (req, res) => {
       ],
       response_format: { type: 'json_object' }
     });
-    res.json({ status: 'success', data: JSON.parse(completion.choices[0].message.content) });
-  } catch (err) { res.status(500).json({ status: 'error', message: err.message }); }
+    const result = completion.choices[0]?.message.content;
+    res.json({ status: 'success', data: result ? JSON.parse(result) : {} });
+  } catch (err: any) { res.status(500).json({ status: 'error', message: err.message }); }
 });
 
-app.get('/api/v1/trading/balance', async (req, res) => {
+app.get('/api/v1/trading/balance', async (req: Request, res: Response): Promise<any> => {
   try {
-    const balance = await runMCPTool('get_balance', {}, path.join(__dirname, '../mcp-trading/index.js'));
+    const balance = await runMCPTool('get_balance', {}, path.join(__dirname, '../../mcp-trading/index.js'));
     res.json({ status: 'success', data: { report: balance } });
-  } catch (err) { res.status(500).json({ status: 'error', message: err.message }); }
+  } catch (err: any) { res.status(500).json({ status: 'error', message: err.message }); }
 });
 
-app.get('/health', (req, res) => res.json({ status: 'alive', engine: 'express' }));
+app.get('/health', (req: Request, res: Response) => res.json({ status: 'alive', engine: 'express/typescript' }));
 
 app.listen(PORT, () => {
-  console.log(`Express Backend 서버 실행 중: http://localhost:${PORT}`);
+  console.log(`Express Backend 서버 실행 중 (TypeScript): http://localhost:${PORT}`);
   console.log(`Swagger 문서: http://localhost:${PORT}/swagger`);
 });
