@@ -1,0 +1,20 @@
+{
+  "name": "mcp-news",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "playwright": "^1.59.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
