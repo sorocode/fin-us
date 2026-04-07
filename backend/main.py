@@ -7,18 +7,22 @@ import json
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
+from anthropic import Anthropic
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 # 1. 환경변수 및 초기 설정
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=OPENAI_API_KEY)
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+
+openai_client = OpenAI(api_key=OPENAI_API_KEY)
+anthropic_client = Anthropic(api_key=ANTHROPIC_API_KEY)
 
 app = FastAPI(
     title="Fin-Us Stock Analysis API",
-    description="MCP 기반 뉴스 수집 및 GPT-4 분석 투자 에이전트 서비스",
-    version="1.0.0"
+    description="MCP 기반 뉴스 수집 및 GPT/Claude 분석 투자 에이전트 서비스",
+    version="1.1.0"
 )
 
 # 2. CORS 설정
@@ -67,25 +71,49 @@ async def run_mcp_tool(server_params: StdioServerParameters, tool_name: str, arg
         print(f"MCP Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"데이터 공급원({tool_name}) 연결 실패")
 
-# 6. [Logic] GPT 분석 엔진
-async def get_trading_signal(news_text: str, stock_name: str) -> TradingSignal:
-    if not OPENAI_API_KEY or OPENAI_API_KEY == "your_openai_api_key_here":
-        return TradingSignal(decision="HOLD", confidence_score=0, reason="API 키 미설정", target_stock=stock_name)
-
-    prompt = f"전문 투자 분석가로서 '{stock_name}'의 최신 뉴스를 분석하여 BUY/SELL/HOLD 신호를 JSON으로 생성하세요.\n뉴스: {news_text}"
+# 6. [Logic] AI 분석 엔진 (OpenAI/Anthropic 지원)
+async def get_trading_signal(news_text: str, stock_name: str, provider: str = "openai") -> TradingSignal:
+    prompt = f"전문 투자 분석가로서 '{stock_name}'의 최신 뉴스를 분석하여 BUY/SELL/HOLD 신호를 JSON 형식으로 생성하세요. 필드는 decision, confidence_score, reason, target_stock을 포함해야 합니다.\n뉴스: {news_text}"
+    
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "금융 분석 전문가입니다. JSON으로 응답하세요."},
-                {"role": "user", "content": prompt}
-            ],
-            response_format={"type": "json_object"}
-        )
-        data = json.loads(response.choices[0].message.content)
-        return TradingSignal(**data)
+        if provider == "openai":
+            if not OPENAI_API_KEY:
+                raise HTTPException(status_code=400, detail="OpenAI API 키가 설정되지 않았습니다.")
+            
+            response = openai_client.chat.completions.create(
+                model="gpt-5.4-mini",
+                messages=[
+                    {"role": "system", "content": "금융 분석 전문가입니다. 반드시 JSON으로만 응답하세요."},
+                    {"role": "user", "content": prompt}
+                ],
+                response_format={"type": "json_object"}
+            )
+            data = json.loads(response.choices[0].message.content)
+            return TradingSignal(**data)
+            
+        elif provider == "anthropic":
+            if not ANTHROPIC_API_KEY:
+                raise HTTPException(status_code=400, detail="Anthropic API 키가 설정되지 않았습니다.")
+            
+            response = anthropic_client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=1024,
+                system="금융 분석 전문가입니다. 반드시 JSON으로만 응답하세요. 다른 설명은 생략하세요.",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            # Claude의 응답 텍스트 추출
+            text_content = response.content[0].text
+            data = json.loads(text_content)
+            return TradingSignal(**data)
+        
+        else:
+            raise HTTPException(status_code=400, detail="지원하지 않는 모델 제공자입니다.")
+            
     except Exception as e:
-        raise HTTPException(status_code=500, detail="AI 분석 도중 오류가 발생했습니다.")
+        print(f"AI Error ({provider}): {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI 분석 도중 오류가 발생했습니다: {str(e)}")
 
 # --- API 엔드포인트 영역 (v1 계층화) ---
 
@@ -96,13 +124,16 @@ async def get_news(stock: str = Query(..., example="삼성전자")):
     return {"status": "success", "data": {"stock": stock, "news": content.split("\n")}}
 
 @app.get("/api/v1/analyze", response_model=CommonResponse, tags=["AI Agent"])
-async def analyze_stock(stock: str = Query(..., example="SK하이닉스")):
-    """뉴스를 수집하고 AI가 투자 신호를 분석합니다."""
+async def analyze_stock(
+    stock: str = Query(..., example="SK하이닉스"),
+    provider: str = Query("openai", description="AI 모델 제공자 (openai 또는 anthropic)")
+):
+    """뉴스를 수집하고 선택한 AI(OpenAI/Anthropic)가 투자 신호를 분석합니다."""
     news_content = await run_mcp_tool(NEWS_MCP_PARAMS, "get_market_news", {"stock_name": stock})
-    signal = await get_trading_signal(news_content, stock)
+    signal = await get_trading_signal(news_content, stock, provider)
     
     report = AnalysisReport(
-        summary=f"'{stock}' 분석 결과 현재 {signal.decision} 전략을 추천합니다.",
+        summary=f"[{provider.upper()}] '{stock}' 분석 결과 현재 {signal.decision} 전략을 추천합니다.",
         details=signal,
         source_news=news_content.split("\n")
     )
