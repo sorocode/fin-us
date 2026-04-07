@@ -49,6 +49,7 @@ class AnalysisReport(BaseModel):
     summary: str
     details: TradingSignal
     source_news: List[str]
+    trading_trend: Optional[str] = None
 
 class CommonResponse(BaseModel):
     status: str = "success"
@@ -72,8 +73,8 @@ async def run_mcp_tool(server_params: StdioServerParameters, tool_name: str, arg
         raise HTTPException(status_code=500, detail=f"데이터 공급원({tool_name}) 연결 실패")
 
 # 6. [Logic] AI 분석 엔진 (OpenAI/Anthropic 지원)
-async def get_trading_signal(news_text: str, stock_name: str, provider: str = "openai") -> TradingSignal:
-    prompt = f"전문 투자 분석가로서 '{stock_name}'의 최신 뉴스를 분석하여 BUY/SELL/HOLD 신호를 JSON 형식으로 생성하세요. 필드는 decision, confidence_score, reason, target_stock을 포함해야 합니다.\n뉴스: {news_text}"
+async def get_trading_signal(news_text: str, stock_name: str, trading_trend: str = "", provider: str = "openai") -> TradingSignal:
+    prompt = f"전문 투자 분석가로서 '{stock_name}'의 최신 뉴스와 수급 현황을 분석하여 BUY/SELL/HOLD 신호를 JSON 형식으로 생성하세요. 필드는 decision, confidence_score, reason, target_stock을 포함해야 합니다.\n\n[최신 뉴스]\n{news_text}\n\n[수급 현황(외인/기관)]\n{trading_trend}"
     
     try:
         if provider == "openai":
@@ -128,16 +129,28 @@ async def analyze_stock(
     stock: str = Query(..., example="SK하이닉스"),
     provider: str = Query("openai", description="AI 모델 제공자 (openai 또는 anthropic)")
 ):
-    """뉴스를 수집하고 선택한 AI(OpenAI/Anthropic)가 투자 신호를 분석합니다."""
-    news_content = await run_mcp_tool(NEWS_MCP_PARAMS, "get_market_news", {"stock_name": stock})
-    signal = await get_trading_signal(news_content, stock, provider)
+    """뉴스 및 수급 현황을 수집하고 선택한 AI가 투자 신호를 분석합니다."""
+    # 뉴스 및 수급 데이터 동시 수집
+    news_task = run_mcp_tool(NEWS_MCP_PARAMS, "get_market_news", {"stock_name": stock})
+    trend_task = run_mcp_tool(NEWS_MCP_PARAMS, "get_investor_trading", {"stock_name": stock})
+    
+    news_content, trend_content = await asyncio.gather(news_task, trend_task)
+    
+    signal = await get_trading_signal(news_content, stock, trend_content, provider)
     
     report = AnalysisReport(
         summary=f"[{provider.upper()}] '{stock}' 분석 결과 현재 {signal.decision} 전략을 추천합니다.",
         details=signal,
-        source_news=news_content.split("\n")
+        source_news=news_content.split("\n"),
+        trading_trend=trend_content
     )
     return {"status": "success", "data": report.model_dump()}
+
+@app.get("/api/v1/trading/trend", response_model=CommonResponse, tags=["Market Data"])
+async def get_trading_trend(stock: str = Query(..., example="삼성전자")):
+    """특정 종목의 외국인 및 기관 매매 동향을 가져옵니다."""
+    trend = await run_mcp_tool(NEWS_MCP_PARAMS, "get_investor_trading", {"stock_name": stock})
+    return {"status": "success", "data": {"stock": stock, "trend": trend}}
 
 @app.get("/api/v1/trading/balance", response_model=CommonResponse, tags=["Trading"])
 async def get_account_balance():
