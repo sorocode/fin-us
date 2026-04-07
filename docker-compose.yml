@@ -1,0 +1,52 @@
+services:
+  # Frontend service
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000/api/v1
+    networks:
+      - fin-us-network
+
+  # Python FastAPI backend service
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - /app/backend/venv
+      - /app/mcp-news/node_modules
+      - /app/mcp-trading/node_modules
+    env_file:
+      - ./backend/.env
+    networks:
+      - fin-us-network
+
+  # Node.js Express backend service
+  backend-express:
+    build:
+      context: .
+      dockerfile: backend-express/Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/backend-express/node_modules
+      - /app/mcp-news/node_modules
+      - /app/mcp-trading/node_modules
+    env_file:
+      - ./backend/.env
+    networks:
+      - fin-us-network
+
+networks:
+  fin-us-network:
+    driver: bridge
