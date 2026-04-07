@@ -54,7 +54,6 @@ uvicorn main:app --reload
 ```
 
 ### 3. MCP 서버 설치
-
 ```bash
 # 뉴스 MCP
 cd mcp-news
@@ -65,12 +64,21 @@ cd mcp-trading
 npm install
 ```
 
+### 4. 프론트엔드 실행
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+
 ## 📝 주요 API 및 기능
 
 | 도구 이름         | 위치          | 설명                                                                                                         |
 | :---------------- | :------------ | :----------------------------------------------------------------------------------------------------------- |
-| `get_market_news` | `mcp-news`    | 특정 종목의 최신 뉴스 3개를 수집합니다.                                                                      |
-| `get_balance`     | `mcp-trading` | 한국투자증권 계좌의 현재 잔고 및 자산 현황을 조회합니다.                                                     |
+| `get_market_news` | `mcp-news` | 특정 종목의 최신 뉴스 3개를 수집합니다. |
+| `get_investor_trading` | `mcp-news` | 특정 종목의 외국인 및 기관 순매수 현황을 가져옵니다. |
+| `get_balance` | `mcp-trading` | 한국투자증권 계좌의 현재 잔고 및 자산 현황을 조회합니다. |
 | `/analyze` (API)  | `backend`     | 뉴스 수집 + AI 분석을 통해 투자 전략 리포트를 생성합니다. (`provider` 파라미터로 openai/anthropic 선택 가능) |
 
 ## 📅 로드맵
@@ -81,6 +89,13 @@ npm install
 - [x] 한국투자증권 API 기반 잔고 조회 기능
 - [ ] 실제 매매 주문 기능 추가 (Buy/Sell)
 - [ ] NVIDIA NeMo Guardrails 기반 안전 장치 도입
+- [x] 다중 언어 백엔드(Express) 정식 지원 (Express TypeScript 마이그레이션 완료)
+
+---
+
+_이 프로젝트는 투자 권유가 아니며, AI 분석 결과에 따른 투자 책임은 사용자 본인에게 있습니다._
+사용자 본인에게 있습니다.\*
+s 기반 안전 장치 도입
 - [x] 다중 언어 백엔드(Express) 정식 지원 (Express TypeScript 마이그레이션 완료)
 
 ---
