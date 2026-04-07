@@ -2,11 +2,11 @@ services:
   # Frontend service
   frontend:
     build:
-      context: ./frontend
+      context: ./frontend-react
     ports:
       - "5173:5173"
     volumes:
-      - ./frontend:/app
+      - ./frontend-react:/app
       - /app/node_modules
     environment:
       - VITE_API_BASE_URL=http://localhost:8000/api/v1

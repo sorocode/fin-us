@@ -66,7 +66,7 @@ npm install
 
 ### 4. 프론트엔드 실행
 ```bash
-cd frontend
+cd frontend-react
 npm install
 npm run dev
 ```
