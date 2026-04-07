@@ -131,7 +131,7 @@ app.get('/api/v1/analyze', async (req: Request, res: Response): Promise<any> => 
   try {
     const news = await runMCPTool('get_market_news', { stock_name: stock }, path.join(__dirname, '../../mcp-news/index.js'));
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5.4-mini',
       messages: [
         { role: 'system', content: '금융 분석 전문가입니다. JSON으로 응답하세요.' },
         { role: 'user', content: `뉴스 분석: ${news}` }
