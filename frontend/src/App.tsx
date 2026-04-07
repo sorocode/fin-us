@@ -50,30 +50,36 @@ const formatNumber = (num: number) => {
 
 const parseTrendData = (trendStr: string | null) => {
   if (!trendStr) return [];
+  console.log("Parsing trend string:", trendStr);
   const lines = trendStr.split('\n').filter(l => l.includes('|'));
   return lines.map(line => {
     const parts = line.split('|').map(p => p.trim());
     const date = parts[0]?.split(' ')[0] || '';
-    const closeStr = parts[1]?.replace('종가: ', '').replace(/,/g, '') || '0';
-    // parts[2] looks like "변동: 상승 6,900 (+3.71%)"
-    const changeFull = parts[2]?.replace('변동: ', '') || '';
-    const isUp = changeFull.includes('상승');
-    const changeVal = changeFull.replace('상승 ', '').replace('하락 ', '').split(' (')[0];
-    const changePct = changeFull.includes('(') ? changeFull.split('(')[1].replace(')', '') : '0%';
-    const foreStr = parts[3]?.replace('외인: ', '').replace(/,/g, '') || '0';
-    const instStr = parts[4]?.replace('기관: ', '').replace(/,/g, '') || '0';
-    const volStr = parts[5]?.replace('거래량: ', '').replace(/,/g, '') || '0';
+    const closeStr = parts[1]?.replace('종가: ', '').replace(/,/g, '').replace(/\s+/g, '') || '0';
     
-    return {
+    const changeFull = parts[2]?.replace('변동: ', '').trim() || '';
+    const isUp = changeFull.includes('상승');
+    // Remove "상승" or "하락" and extra spaces
+    const cleanChange = changeFull.replace('상승', '').replace('하락', '').trim();
+    const changeVal = cleanChange.split(' (')[0].trim();
+    const changePct = changeFull.includes('(') ? changeFull.split('(')[1].replace(')', '') : '0%';
+    
+    const foreStr = parts[3]?.replace('외인: ', '').replace(/,/g, '').replace(/\s+/g, '') || '0';
+    const instStr = parts[4]?.replace('기관: ', '').replace(/,/g, '').replace(/\s+/g, '') || '0';
+    const volStr = parts[5]?.replace('거래량: ', '').replace(/,/g, '').replace(/\s+/g, '') || '0';
+    
+    const result = {
       date: date.substring(5),
       price: parseInt(closeStr),
       changeVal,
       changePct,
       isUp,
-      foreigner: parseInt(foreStr),
-      institution: parseInt(instStr),
-      volume: parseInt(volStr)
+      foreigner: parseInt(foreStr) || 0,
+      institution: parseInt(instStr) || 0,
+      volume: parseInt(volStr) || 0
     };
+    console.log("Parsed row:", result);
+    return result;
   }).reverse();
 };
 
@@ -91,10 +97,13 @@ export default function App() {
     if (!stock) return;
     setLoading(true); setError(''); setReport(null); setRawNews([]); setRawTrend(null);
     try {
+      console.log(`Analyzing ${stock} with ${provider}...`);
       const response = await axios.get(`/api/v1/analyze?stock=${stock}&provider=${provider}`);
+      console.log("Analyze response:", response.data);
       if (response.data.status === 'success') setReport(response.data.data);
       else setError('분석 데이터를 가져오지 못했습니다.');
     } catch (err: any) {
+      console.error("Analyze error:", err);
       setError(err.response?.data?.detail || '서버와 통신 중 오류가 발생했습니다.');
     } finally { setLoading(false); }
   };
@@ -104,13 +113,19 @@ export default function App() {
     if (!stock) return;
     setLoading(true); setError(''); setReport(null); setRawNews([]); setRawTrend(null);
     try {
+      console.log(`Fetching data for ${stock}...`);
       const [newsRes, trendRes] = await Promise.all([
         axios.get(`/api/v1/news?stock=${stock}`),
         axios.get(`/api/v1/trading/trend?stock=${stock}`)
       ]);
+      console.log("News response:", newsRes.data);
+      console.log("Trend response:", trendRes.data);
       if (newsRes.data.status === 'success') setRawNews(newsRes.data.data.news);
       if (trendRes.data.status === 'success') setRawTrend(trendRes.data.data.trend);
-    } catch (err: any) { setError('데이터 수집 중 오류가 발생했습니다.'); }
+    } catch (err: any) { 
+      console.error("Fetch data error:", err);
+      setError('데이터 수집 중 오류가 발생했습니다.'); 
+    }
     finally { setLoading(false); }
   };
 
