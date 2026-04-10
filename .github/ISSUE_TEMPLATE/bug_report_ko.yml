@@ -1,0 +1,49 @@
+name: "🐛 버그 리포트"
+description: "문제를 보고하고 개선하는 데 도움을 주세요."
+title: "[BUG] "
+labels: ["bug"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        버그 리포트를 작성해 주셔서 감사합니다! 문제를 정확히 파악하기 위해 아래 정보를 상세히 작성해 주세요.
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: "버그 설명"
+      description: "어떤 문제가 발생했는지 간략하고 명확하게 설명해 주세요."
+      placeholder: "예: 로그인 버튼을 클릭했을 때 오류 메시지가 표시됩니다."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: "재현 절차"
+      description: "문제를 재현하기 위한 단계를 작성해 주세요."
+      placeholder: |
+        1. '...' 페이지로 이동합니다.
+        2. '...' 버튼을 클릭합니다.
+        3. '...' 오류가 발생합니다.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: "예상 동작"
+      description: "원래 어떻게 동작해야 하는지 설명해 주세요."
+      placeholder: "예: 버튼 클릭 시 메인 대시보드로 이동해야 합니다."
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: "스크린샷 (선택 사항)"
+      description: "문제 상황을 보여주는 이미지나 로그를 첨부해 주세요."
+  - type: input
+    id: environment
+    attributes:
+      label: "환경 정보"
+      description: "브라우저, OS, 버전 등 관련 정보를 작성해 주세요."
+      placeholder: "예: Chrome 120.0, macOS Sonoma"
