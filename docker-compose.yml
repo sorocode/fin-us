@@ -31,21 +31,21 @@ services:
       - fin-us-network
 
   # Node.js Express backend service
-  backend-express:
-    build:
-      context: .
-      dockerfile: backend-express/Dockerfile
-    ports:
-      - "3000:3000"
-    volumes:
-      - .:/app
-      - /app/backend-express/node_modules
-      - /app/mcp-news/node_modules
-      - /app/mcp-trading/node_modules
-    env_file:
-      - ./backend/.env
-    networks:
-      - fin-us-network
+  # backend-express:
+  #   build:
+  #     context: .
+  #     dockerfile: backend-express/Dockerfile
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - .:/app
+  #     - /app/backend-express/node_modules
+  #     - /app/mcp-news/node_modules
+  #     - /app/mcp-trading/node_modules
+  #   env_file:
+  #     - ./backend/.env
+  #   networks:
+  #     - fin-us-network
 
 networks:
   fin-us-network:
