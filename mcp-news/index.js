@@ -43,6 +43,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["stock_name"],
       },
     },
+    {
+      name: "get_research_reports",
+      description: "네이버 증권 리서치 페이지에서 특정 종목의 증권사 리포트 목록을 가져옵니다.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          stock_name: {
+            type: "string",
+            description: "주식 종목명 (예: 삼성전자, SK하이닉스)",
+          },
+        },
+        required: ["stock_name"],
+      },
+    },
   ],
 }));
 
@@ -134,6 +148,43 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }, stock_name);
 
       return { content: [{ type: "text", text: tradingData }] };
+
+    } else if (name === "get_research_reports") {
+      // 1. 네이버 증권 리서치 종목 분석 페이지로 이동
+      const researchUrl = "https://finance.naver.com/research/company_list.naver";
+      await page.goto(researchUrl, { waitUntil: "load" });
+
+      // 2. 종목명으로 리포트 필터링 및 데이터 추출
+      const reports = await page.evaluate((sName) => {
+        const rows = Array.from(document.querySelectorAll("table.type_1 tr"))
+          .filter(tr => {
+            const cells = tr.querySelectorAll("td");
+            if (cells.length < 2) return false;
+            const target = cells[0].innerText.trim();
+            const title = cells[1].innerText.trim();
+            return target === sName || title.includes(sName);
+          })
+          .map(tr => {
+            const cells = tr.querySelectorAll("td");
+            return {
+              stock: cells[0].innerText.trim(),
+              title: cells[1].innerText.trim(),
+              company: cells[2].innerText.trim(),
+              date: cells[4].innerText.trim(),
+            };
+          })
+          .slice(0, 5);
+
+        if (rows.length === 0) return `해당 종목('${sName}')에 대한 최근 리서치 리포트를 찾을 수 없습니다.`;
+
+        let reportText = `[${sName}] 네이버 증권 최근 리서치 리포트\n`;
+        rows.forEach(r => {
+          reportText += `${r.date} | ${r.company} | ${r.title}\n`;
+        });
+        return reportText;
+      }, stock_name);
+
+      return { content: [{ type: "text", text: reports }] };
     }
   } catch (error) {
     return { content: [{ type: "text", text: `에러 발생: ${error.message}` }], isError: true };
