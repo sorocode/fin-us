@@ -1,3 +1,6 @@
+// FinUsTrendParser.cs — API가 내려주는 트렌드 필드는 한 덩어리 텍스트(줄바꿈 구분)다.
+// "|"가 있는 줄만 후보로 삼고, 날짜·종가·변동·외인·기관·거래량 토큰을 잘라 TrendItem으로 만든다. 포맷이 어긋나면 해당 줄은 스킵.
+
 using System.Collections.Generic;
 using System.Linq;
 
@@ -17,7 +20,7 @@ public static class FinUsTrendParser
             var parts = line.Split('|').Select(part => part.Trim()).ToArray();
             if (parts.Length < 6)
             {
-                continue;
+                continue; // 기대 컬럼 수 미만이면 파싱 불가
             }
 
             var changeText = parts[2].Replace("변동:", string.Empty).Trim();

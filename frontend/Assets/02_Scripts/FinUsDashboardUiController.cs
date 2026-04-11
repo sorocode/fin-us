@@ -1,3 +1,6 @@
+// FinUsDashboardUiController.cs — UI Toolkit(UXML/USS) 요소를 찾아 바인딩하고, 버튼 이벤트에서 API 코루틴을 돌린 뒤 라벨을 갱신한다.
+// 흐름: OnEnable에서 root.Q로 컨트롤 참조 확보 → 클릭 시 입력 검증 → StartCoroutine → FinUsApiClient → 파싱·문자열 빌드 → SetSuccess/SetError.
+
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
@@ -26,6 +29,7 @@ public class FinUsDashboardUiController : MonoBehaviour
     private Label trendLabel;
     private Label newsLabel;
 
+    // 드롭다운에 보이는 문구(labels)와 실제 쿼리로 보낼 값(values)을 분리한다.
     private readonly List<string> providerValues = new List<string> { "openai", "anthropic" };
     private readonly List<string> providerLabels = new List<string> { "GPT-5.4-mini", "Claude-Sonnet-4-6" };
 
@@ -55,7 +59,7 @@ public class FinUsDashboardUiController : MonoBehaviour
         dataOnlyButton.clicked += OnDataOnlyClicked;
         analyzeButton.clicked += OnAnalyzeClicked;
 
-        SetIdleState();
+        SetIdleState(); // 초기 문구·버튼 상태
     }
 
     private void OnDisable()
@@ -80,7 +84,7 @@ public class FinUsDashboardUiController : MonoBehaviour
             return;
         }
 
-        StartCoroutine(FetchDataOnly(stock));
+        StartCoroutine(FetchDataOnly(stock)); // AI 없이 뉴스+트렌드만
     }
 
     private void OnAnalyzeClicked()
@@ -94,7 +98,7 @@ public class FinUsDashboardUiController : MonoBehaviour
 
         var providerIndex = Mathf.Clamp(providerDropdown.index, 0, providerValues.Count - 1);
         var provider = providerValues[providerIndex];
-        StartCoroutine(FetchAnalysis(stock, provider));
+        StartCoroutine(FetchAnalysis(stock, provider)); // 단일 analyze 엔드포인트
     }
 
     private IEnumerator FetchDataOnly(string stock)
@@ -113,7 +117,7 @@ public class FinUsDashboardUiController : MonoBehaviour
             yield break;
         }
 
-        var parsedTrend = FinUsTrendParser.Parse(result.trendRaw);
+        var parsedTrend = FinUsTrendParser.Parse(result.trendRaw); // 원문 문자열 → TrendItem 리스트
         RenderStockHeader(stock, parsedTrend.LastOrDefault());
         decisionLabel.text = "결정: (DATA ONLY 모드)";
         decisionLabel.style.color = new StyleColor(new Color(0.2f, 0.2f, 0.2f));

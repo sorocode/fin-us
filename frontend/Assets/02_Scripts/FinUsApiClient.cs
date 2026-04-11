@@ -1,3 +1,6 @@
+// FinUsApiClient.cs — FastAPI 백엔드와 HTTP로 통신한다.
+// UnityWebRequest + IEnumerator 코루틴: 프레임을 막지 않고 응답을 기다린 뒤 콜백으로 결과를 넘긴다.
+// 성공 본문은 JsonUtility로 파싱(모델은 FinUsApiModels). 실패 시 본문에 detail이 있으면 그 문자열을 우선 사용한다.
 using System;
 using System.Collections;
 using UnityEngine.Networking;
@@ -11,6 +14,7 @@ public class FinUsApiClient
         this.apiBaseUrl = apiBaseUrl;
     }
 
+    // 흐름: 뉴스 GET → 성공 시 트렌드 GET → 둘 다 성공이면 JSON 파싱 후 DataOnlyResult로 묶어 onSuccess.
     public IEnumerator FetchDataOnly(string stock, Action<DataOnlyResult> onSuccess, Action<string> onError)
     {
         var newsUrl = $"{apiBaseUrl}/api/v1/news?stock={UnityWebRequest.EscapeURL(stock)}";
@@ -43,6 +47,7 @@ public class FinUsApiClient
         });
     }
 
+    // 흐름: analyze GET 한 번 → HTTP 성공 후 status/data 검증 → AnalyzeData만 onSuccess로 전달.
     public IEnumerator FetchAnalysis(string stock, string provider, Action<AnalyzeData> onSuccess, Action<string> onError)
     {
         var analyzeUrl = $"{apiBaseUrl}/api/v1/analyze?stock={UnityWebRequest.EscapeURL(stock)}&provider={UnityWebRequest.EscapeURL(provider)}";
@@ -65,6 +70,7 @@ public class FinUsApiClient
         onSuccess?.Invoke(parsed.data);
     }
 
+    // FastAPI HTTPException 응답은 보통 { "detail": "문자열" }. 없으면 UnityWebRequest.error로 폴백.
     private static string ExtractErrorMessage(UnityWebRequest request, string fallbackPrefix)
     {
         var body = request.downloadHandler?.text;
