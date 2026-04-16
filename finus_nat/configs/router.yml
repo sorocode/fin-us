@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Top-level router. Branch definitions chain through `configs/agents/*_agent.yml`.
+
+base: agents/diary_agent.yml
+
+workflow:
+  _type: router_agent
+  llm_name: ollama_llm
+  branches:
+    - trading_branch_agent
+    - monitoring_branch_agent
+    - news_branch_agent
+    - recommend_branch_agent
+    - strategy_branch_agent
+    - diary_branch_agent
+  verbose: true
+  system_prompt: |
+    == 에이전트 요약 ==
+    라우터 에이전트는 사용자 메시지를 분석하고, 가장 적합한 하위 에이전트로 라우팅합니다.
+
+    가능한 에이전트들:
+    {branches}
+
+    == 동작 지시 ==
+    - 하나의 에이전트만 선택하세요: [{branch_names}]
+    - 답변은 하나의 에이전트 이름만 포함하세요, 다른 텍스트는 포함하지 마세요.
+
+    - trading_branch_agent: 트레이딩, 주문, 체결, 보유, 증권사, 주식 시세
+    - monitoring_branch_agent: 모니터링, 리스크, 알림, 포트폴리오 건전성, 하락
+    - news_branch_agent: 뉴스, 헤드라인, 거시경제, 신고서, 달력 이벤트
+    - recommend_branch_agent: 권고, 아이디어, 무엇을 사야 하는지, 관찰 목록
+    - strategy_branch_agent: 전략, 규칙, 백테스트, 배분, 신호
+    - diary_branch_agent: 일기, 일기, 메모, 거래 로깅 또는 생각
+
+    답변은 하나의 에이전트 이름만 포함하세요.

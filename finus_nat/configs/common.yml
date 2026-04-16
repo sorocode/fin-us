@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Shared LLM, stub tool, and Fin-Us vendored MCP tools (news + trading balance).
+#
+# Local LLM: Ollama OpenAI-compatible API (`/v1/chat/completions`, default port **11434**).
+# Start Ollama and ensure the model is available, for example: `ollama pull qwen3.5:9b`.
+#
+# Optional: `OLLAMA_OPENAI_BASE_URL` (default `http://127.0.0.1:11434/v1`), `OLLAMA_API_KEY` (often unused),
+# `OLLAMA_MODEL` (default `qwen3.5:9b`).
+
+
+functions:
+  fe_stub:
+    _type: fe_stub
+  finus_market_news:
+    _type: finus_market_news
+  finus_investor_trading:
+    _type: finus_investor_trading
+  finus_research_reports:
+    _type: finus_research_reports
+  finus_account_balance:
+    _type: finus_account_balance
+
+llms:
+  ollama_llm:
+    _type: openai
+    api_key: ${OLLAMA_API_KEY:-ollama}
+    base_url: ${OLLAMA_OPENAI_BASE_URL:-http://127.0.0.1:11434/v1}
+    model_name: ${OLLAMA_MODEL:-qwen3.5:9b}

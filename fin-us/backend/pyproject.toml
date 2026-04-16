@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# 한글: 로컬 실행은 지원하지 않습니다. Docker 이미지 빌드 시 `uv sync --frozen`으로 의존성을 설치합니다.
+#      (부트스트랩 시 `scripts/templates/pyproject_integrated.toml`에서 덮어쓸 수 있음.)
+
+[project]
+name = "fin-us-backend-integrate"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.0",
+    "python-dotenv>=1.0",
+    "openai>=1.0",
+    "anthropic>=0.40",
+    "mcp>=1.0",
+    "pyyaml>=6.0",
+    "httpx>=0.27",
+]

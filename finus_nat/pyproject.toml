@@ -1,0 +1,44 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# 한글: 패키지 빌드에 setuptools + setuptools-scm(버전)을 사용합니다. `nvidia-nat`는 PyPI 고정입니다.
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+
+[tool.setuptools_scm]
+git_describe_command = "git describe --long --first-parent"
+# 한글: 이 저장소 루트(상위 `..`)에 `.git`이 있다고 가정합니다 (`finus_nat/`는 하위 디렉터리).
+root = ".."
+
+[tool.setuptools.packages.find]
+# 한글: 패키지 소스는 `src/` 아래 (`nat_finus_nat` 모듈).
+where = ["src"]
+
+[project]
+# 한글: 배포·로컬 설치 시 패키지 이름. `uv run --project …`의 대상이기도 합니다.
+name = "nat-finus-nat"
+dynamic = ["version"]
+requires-python = ">=3.11,<3.14"
+# 한글(요약): 라우터 + 6브랜치 ReAct, Ollama·KIS MCP·Fin-Us 벤더 MCP 예제.
+description = "Fin-Us NAT example: router + six sub-agents (Ollama + KIS MCP + Fin-Us MCP tools)"
+classifiers = ["Programming Language :: Python"]
+dependencies = [
+  "nvidia-nat[langchain,mcp]>=1.6.0,<2",
+]
+
+[project.entry-points.'nat.components']
+# 한글: NAT가 워크플로를 빌드할 때 로드할 컴포넌트 모듈 (`register.py`에서 side effect 등록).
+nat_finus_nat = "nat_finus_nat.register"

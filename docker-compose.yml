@@ -1,51 +1,72 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Compose for the integrated Fin-Us stack (fin-us FastAPI + finus_nat FastAPI + Vite).
+# Run from this repository root (directory that contains this file):
+#   docker compose up --build
+#
+# finus-nat needs a reachable LLM (default Ollama on the host: OLLAMA_OPENAI_BASE_URL) and,
+# for trading/monitoring branches, KIS MCP SSE (KIS_MCP_SSE_URL). Start those on the host before up,
+# or override the URLs to point at services on your network.
+
 services:
-  # Frontend service
   frontend:
     build:
-      context: ./frontend-react
+      context: ./fin-us/frontend-react
     ports:
       - "5173:5173"
     volumes:
-      - ./frontend-react:/app
+      - ./fin-us/frontend-react:/app
       - /app/node_modules
     environment:
       - VITE_API_BASE_URL=http://localhost:8000/api/v1
+    depends_on:
+      backend:
+        condition: service_started
     networks:
       - fin-us-network
 
-  # Python FastAPI backend service
   backend:
     build:
-      context: .
+      context: ./fin-us
       dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
-      - /app/backend/venv
-      - /app/mcp-news/node_modules
-      - /app/mcp-trading/node_modules
     env_file:
-      - ./backend/.env
+      - ./fin-us/backend/.env
+    environment:
+      # In compose, reach the toolkit workflow server by service name (not localhost).
+      NAT_BASE_URL: http://finus-nat:8000
+      # Fixed for this example; must be pulled in Ollama (`ollama pull qwen3.5:9b`). Overrides backend/.env.
+      NAT_CHAT_MODEL: qwen3.5:9b
+      OLLAMA_MODEL: qwen3.5:9b
+    depends_on:
+      finus-nat:
+        condition: service_healthy
     networks:
       - fin-us-network
 
-  # Node.js Express backend service
-  # backend-express:
-  #   build:
-  #     context: .
-  #     dockerfile: backend-express/Dockerfile
-  #   ports:
-  #     - "3000:3000"
-  #   volumes:
-  #     - .:/app
-  #     - /app/backend-express/node_modules
-  #     - /app/mcp-news/node_modules
-  #     - /app/mcp-trading/node_modules
-  #   env_file:
-  #     - ./backend/.env
-  #   networks:
-  #     - fin-us-network
+  finus-nat:
+    build:
+      context: .
+      dockerfile: finus_nat/Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      # Fixed for this example (must exist in host Ollama). Edit here to use another tag.
+      OLLAMA_MODEL: qwen3.5:9b
+      OLLAMA_OPENAI_BASE_URL: ${OLLAMA_OPENAI_BASE_URL:-http://host.docker.internal:11434/v1}
+      KIS_MCP_SSE_URL: ${KIS_MCP_SSE_URL:-http://host.docker.internal:3000/sse}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+    networks:
+      - fin-us-network
 
 networks:
   fin-us-network:
