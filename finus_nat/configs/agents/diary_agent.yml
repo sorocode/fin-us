@@ -1,12 +1,9 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-
 base: strategy_agent.yml
 
 functions:
   diary_agent:
     _type: react_agent
-    llm_name: ollama_llm
+    llm_name: openai_cloud_llm
     tool_names:
       - fe_stub
     verbose: false

@@ -7,7 +7,6 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        // Compose: Vite runs in `frontend`; proxy must use the Docker service name.
         target: 'http://backend:8000',
         changeOrigin: true,
       }

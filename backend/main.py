@@ -1,6 +1,3 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -49,8 +46,27 @@ ANTHROPIC_CHAT_MODEL = os.getenv("ANTHROPIC_CHAT_MODEL", "claude-sonnet-4-202505
 NAT_BASE_URL = os.environ.get("NAT_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 NAT_CHAT_MODEL = os.environ.get(
     "NAT_CHAT_MODEL",
-    os.environ.get("OLLAMA_MODEL", "qwen3.5:9b"),
+    os.environ.get("OPENAI_CHAT_MODEL", "gpt-4o-mini"),
 )
+
+OLLAMA_API_KEY = os.environ.get("OLLAMA_API_KEY", "ollama")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3.5:9b")
+
+
+def _ollama_openai_base_url() -> str:
+    """OpenAI-compatible Ollama /v1. In Docker, 127.0.0.1 is the container — default to host gateway."""
+    raw = (os.environ.get("OLLAMA_OPENAI_BASE_URL") or "").strip()
+    if not raw:
+        raw = (
+            "http://host.docker.internal:11434/v1"
+            if Path("/.dockerenv").exists()
+            else "http://127.0.0.1:11434/v1"
+        )
+    base = raw.rstrip("/")
+    if base.endswith("/v1"):
+        return base
+    return f"{base}/v1"
+
 
 _NEWS_MCP_DIR = (_FIN_US_ROOT / "mcp-news").resolve()
 _TRADING_MCP_DIR = (_FIN_US_ROOT / "mcp-trading").resolve()
@@ -106,7 +122,7 @@ async def _llm_openai_chat(user_msg: str) -> str:
     if not OPENAI_API_KEY:
         raise HTTPException(
             status_code=503,
-            detail="OPENAI_API_KEY가 설정되지 않았습니다. .env를 채우거나 provider=nat을 사용하세요.",
+            detail="OPENAI_API_KEY가 설정되지 않았습니다. backend/.env에 키를 설정하세요.",
         )
     client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     resp = await client.chat.completions.create(
@@ -122,7 +138,7 @@ async def _llm_anthropic_chat(user_msg: str) -> str:
     if not ANTHROPIC_API_KEY:
         raise HTTPException(
             status_code=503,
-            detail="ANTHROPIC_API_KEY가 설정되지 않았습니다. .env를 채우거나 provider=nat을 사용하세요.",
+            detail="ANTHROPIC_API_KEY가 설정되지 않았습니다. backend/.env에 키를 설정하세요.",
         )
     client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
     msg = await client.messages.create(
@@ -135,6 +151,32 @@ async def _llm_anthropic_chat(user_msg: str) -> str:
         if block.type == "text":
             parts.append(block.text)
     return "".join(parts).strip()
+
+
+async def _llm_ollama_chat(user_msg: str) -> str:
+    base = _ollama_openai_base_url()
+    client = AsyncOpenAI(
+        api_key=OLLAMA_API_KEY or "ollama",
+        base_url=base,
+    )
+    try:
+        resp = await client.chat.completions.create(
+            model=OLLAMA_MODEL,
+            messages=[{"role": "user", "content": user_msg}],
+            temperature=0.2,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"Ollama 호출 실패 ({base}, model={OLLAMA_MODEL}): {exc}. "
+                "호스트에서 `ollama serve` 실행 여부를 확인하세요. "
+                "Docker 백엔드는 기본으로 host.docker.internal을 씁니다; "
+                "직접 지정하려면 backend/.env에 OLLAMA_OPENAI_BASE_URL을 넣으세요."
+            ),
+        ) from exc
+    choice = resp.choices[0].message.content
+    return (choice or "").strip()
 
 
 def _nat_message_from_payload(payload: dict[str, Any]) -> str:
@@ -199,7 +241,7 @@ async def _llm_nat_chat(user_msg: str) -> str:
         raise HTTPException(
             status_code=502,
             detail=(
-                f"NAT 응답 형식 오류 ({exc}). NAT_CHAT_MODEL이 Ollama에 있는지 확인하세요. "
+                f"NAT 응답 형식 오류 ({exc}). NAT_CHAT_MODEL이 NAT 서비스에서 쓰는 모델과 일치하는지 확인하세요. "
                 f"body[:1200]={body_snip!r}"
             ),
         ) from exc
@@ -255,25 +297,37 @@ def _analysis_from_nat_text(raw: str, stock: str) -> dict[str, Any]:
     ).model_dump()
 
 
-def _normalize_llm_provider(provider: str) -> Literal["openai", "anthropic", "nat"]:
-    p = (provider or "nat").strip().lower()
+def _normalize_llm_provider(
+    provider: str,
+) -> Literal["openai", "anthropic", "nat", "ollama"]:
+    p = (provider or "openai").strip().lower()
     if p in ("openai", "gpt", "open_ai"):
         return "openai"
     if p in ("anthropic", "claude"):
         return "anthropic"
     if p in ("nat", "nemo", "nvidia"):
         return "nat"
+    if p == "ollama":
+        return "ollama"
     raise HTTPException(
         status_code=400,
-        detail=f"지원하지 않는 provider={provider!r}. nat | openai | anthropic 중 하나를 사용하세요.",
+        detail=(
+            f"지원하지 않는 provider={provider!r}. "
+            "openai | anthropic | ollama | nat(API 전용) 중 하나를 사용하세요."
+        ),
     )
 
 
-async def _llm_chat(provider_key: Literal["openai", "anthropic", "nat"], user_msg: str) -> str:
+async def _llm_chat(
+    provider_key: Literal["openai", "anthropic", "nat", "ollama"],
+    user_msg: str,
+) -> str:
     if provider_key == "openai":
         return await _llm_openai_chat(user_msg)
     if provider_key == "anthropic":
         return await _llm_anthropic_chat(user_msg)
+    if provider_key == "ollama":
+        return await _llm_ollama_chat(user_msg)
     return await _llm_nat_chat(user_msg)
 
 
@@ -287,8 +341,11 @@ async def get_news(stock: str = Query(..., examples=["삼성전자"])):
 async def analyze_stock(
     stock: str = Query(..., examples=["SK하이닉스"]),
     provider: str = Query(
-        "nat",
-        description="nat=NAT FastAPI(finus_nat); openai=OpenAI Chat Completions; anthropic=Anthropic Messages",
+        "openai",
+        description=(
+            "openai=OpenAI; anthropic=Anthropic; ollama=local OpenAI-compatible /v1; "
+            "nat=NAT multi-agent (still available via API query)"
+        ),
     ),
 ):
     user_msg = (

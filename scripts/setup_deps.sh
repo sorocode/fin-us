@@ -1,23 +1,16 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-
 
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/_env.sh"
 
-BOOTSTRAP=0
-for _arg in "$@"; do
-  if [[ "${_arg}" == "--bootstrap" ]]; then
-    BOOTSTRAP=1
-  fi
-done
-
 command -v docker >/dev/null || { echo "ERROR: docker required" >&2; exit 1; }
 
-if [[ "${BOOTSTRAP}" -eq 1 ]]; then
-  echo "== bootstrap fin-us from fin-us-reference =="
-  bash "${FIN_US_DIR}/scripts/bootstrap_from_reference.sh"
+if command -v npm >/dev/null 2>&1; then
+  echo "== MCP Node deps (mcp-news, mcp-trading) =="
+  bash "${FIN_US_INTEGRATE_ROOT}/scripts/install_fin_us_mcp.sh"
+else
+  echo "WARN: npm not found. Install Node.js and run: bash scripts/install_fin_us_mcp.sh" >&2
+  echo "      (backend needs mcp-*/node_modules on the host bind mount.)" >&2
 fi
 
 echo "== docker compose build (finus-nat, backend, frontend) =="
@@ -27,4 +20,4 @@ docker compose build
 echo
 echo "OK. Start the stack:"
 echo "  bash ${FIN_US_INTEGRATE_ROOT}/scripts/run_stack.sh"
-echo "Or per service: run_backend.sh, run_frontend.sh, run_nat.sh"
+echo "Or one service: bash ${FIN_US_INTEGRATE_ROOT}/scripts/run_stack.sh backend"

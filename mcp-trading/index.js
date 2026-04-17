@@ -9,20 +9,17 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 
-// 1. 환경변수 로드
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, ".env") });
 
 const { KIS_API_KEY, KIS_API_SECRET, KIS_ACCOUNT_NO, KIS_URL } = process.env;
 
-// 2. 서버 인스턴스 생성
 const server = new Server(
   { name: "trading-tool", version: "1.0.0" },
   { capabilities: { tools: {} } }
 );
 
-// 3. 도구 목록 정의
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
@@ -52,7 +49,6 @@ async function getAccessToken() {
   }
 }
 
-// 4. 도구 실행 로직
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === "get_balance") {
     
@@ -123,7 +119,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   throw new Error("존재하지 않는 도구입니다.");
 });
 
-// 5. 전송 계층 연결
 const transport = new StdioServerTransport();
 await server.connect(transport);
 

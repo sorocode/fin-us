@@ -1,4 +1,2 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-# 한글: Fin-Us Node MCP는 `../fin-us/mcp-*`에 있습니다. gitignore는 `fin-us/.gitignore`를 참고하세요.
+.venv/
+__pycache__/

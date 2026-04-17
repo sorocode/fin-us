@@ -1,6 +1,3 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -69,8 +66,8 @@ async def _mcp_call_tool(
                 "error": "mcp_server_script_missing",
                 "path": str(script),
                 "hint": (
-                    f"Expected MCP under {vendor_root}; run fin-us install script "
-                    f"(fin-us/scripts/install_fin_us_mcp.sh from this repository root) "
+                    f"Expected MCP under {vendor_root}; run the install script "
+                    f"(scripts/install_fin_us_mcp.sh from this repository root) "
                     "or set FINUS_VENDOR_ROOT."
                 ),
             },

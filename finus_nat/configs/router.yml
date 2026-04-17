@@ -1,13 +1,8 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-# Top-level router. Branch definitions chain through `configs/agents/*_agent.yml`.
-
 base: agents/diary_agent.yml
 
 workflow:
   _type: router_agent
-  llm_name: ollama_llm
+  llm_name: openai_cloud_llm
   branches:
     - trading_branch_agent
     - monitoring_branch_agent

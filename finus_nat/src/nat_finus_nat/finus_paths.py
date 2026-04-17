@@ -1,6 +1,3 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -14,7 +11,7 @@
 # limitations under the License.
 
 """
-절대 경로를 계산합니다. fin-us/mcp-news, fin-us/mcp-trading 디렉터리를 참조합니다.
+절대 경로를 계산합니다. 저장소 루트의 mcp-news, mcp-trading(레거시: fin-us/mcp-*)를 참조합니다.
 FINUS_VENDOR_ROOT 환경 변수가 설정되면 그 경로를 참조합니다.
 """
 
@@ -32,7 +29,11 @@ def fin_us_vendor_root() -> Path:
     env = os.environ.get("FINUS_VENDOR_ROOT")
     if env:
         return Path(env).expanduser().resolve()
-    fin_us_home = finus_nat_example_root().parent / "fin-us"
+    integrate_root = finus_nat_example_root().parent
+    flat = integrate_root
+    if (flat / "mcp-news" / "index.js").is_file() and (flat / "mcp-trading" / "index.js").is_file():
+        return flat
+    fin_us_home = integrate_root / "fin-us"
     if (fin_us_home / "mcp-news" / "index.js").is_file() and (fin_us_home / "mcp-trading" / "index.js").is_file():
         return fin_us_home
     return finus_nat_example_root() / "vendor" / "fin_us"

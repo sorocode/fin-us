@@ -12,7 +12,7 @@ function axiosDetail(err: unknown): string {
 
 export function useFinUsDashboard() {
   const [stock, setStock] = useState('');
-  const [provider, setProvider] = useState('nat');
+  const [provider, setProvider] = useState('openai');
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<AnalysisReport | null>(null);
   const [rawNews, setRawNews] = useState<string[]>([]);

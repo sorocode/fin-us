@@ -1,14 +1,9 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-# 한글: 추천 — `recommend_branch_agent` / `recommend_agent`. 이전: `news_agent.yml`.
-
 base: news_agent.yml
 
 functions:
   recommend_agent:
     _type: react_agent
-    llm_name: ollama_llm
+    llm_name: openai_cloud_llm
     tool_names:
       - finus_market_news
       - finus_investor_trading
@@ -28,4 +23,4 @@ functions:
   recommend_branch_agent:
     _type: fe_branch
     inner_function_name: recommend_agent
-    tool_description: "Recommendations: Fin-Us mcp-news (headlines, flows, research) + Ollama synthesis."
+    tool_description: "Recommendations: Fin-Us mcp-news (headlines, flows, research) + LLM synthesis."

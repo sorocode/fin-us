@@ -1,12 +1,9 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-
 base: recommend_agent.yml
 
 functions:
   strategy_agent:
     _type: react_agent
-    llm_name: ollama_llm
+    llm_name: openai_cloud_llm
     tool_names:
       - finus_market_news
       - finus_investor_trading
@@ -26,4 +23,4 @@ functions:
   strategy_branch_agent:
     _type: fe_branch
     inner_function_name: strategy_agent
-    tool_description: "Strategy: Fin-Us mcp-news + mcp-trading balance + Ollama synthesis."
+    tool_description: "Strategy: Fin-Us mcp-news + mcp-trading balance + LLM synthesis."

@@ -49,9 +49,9 @@ const SearchForm: React.FC<SearchFormProps> = ({
               onChange={(e) => setProvider(e.target.value)}
               className="focus:outline-none bg-transparent text-xs font-black text-white mr-2 px-2"
             >
-              <option value="nat" className="text-slate-900">NAT (finus_nat)</option>
               <option value="openai" className="text-slate-900">OpenAI API</option>
               <option value="anthropic" className="text-slate-900">Anthropic API</option>
+              <option value="ollama" className="text-slate-900">Ollama</option>
             </select>
             <button
               onClick={handleAnalyze}

@@ -1,8 +1,0 @@
-# NeMo integrate build: MCP + FastAPI + NAT proxy (no reference OpenAI/Anthropic orchestration).
-fastapi
-uvicorn[standard]
-pydantic
-python-dotenv
-mcp
-pyyaml
-httpx

@@ -1,22 +1,11 @@
-# SPDX-FileCopyrightText: Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-# Compose for the integrated Fin-Us stack (fin-us FastAPI + finus_nat FastAPI + Vite).
-# Run from this repository root (directory that contains this file):
-#   docker compose up --build
-#
-# finus-nat needs a reachable LLM (default Ollama on the host: OLLAMA_OPENAI_BASE_URL) and,
-# for trading/monitoring branches, KIS MCP SSE (KIS_MCP_SSE_URL). Start those on the host before up,
-# or override the URLs to point at services on your network.
-
 services:
   frontend:
     build:
-      context: ./fin-us/frontend-react
+      context: ./frontend-react
     ports:
       - "5173:5173"
     volumes:
-      - ./fin-us/frontend-react:/app
+      - ./frontend-react:/app
       - /app/node_modules
     environment:
       - VITE_API_BASE_URL=http://localhost:8000/api/v1
@@ -28,18 +17,19 @@ services:
 
   backend:
     build:
-      context: ./fin-us
+      context: .
       dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
+    volumes:
+      - .:/app
+      - /app/backend/venv
     env_file:
-      - ./fin-us/backend/.env
+      - ./backend/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      # In compose, reach the toolkit workflow server by service name (not localhost).
       NAT_BASE_URL: http://finus-nat:8000
-      # Fixed for this example; must be pulled in Ollama (`ollama pull qwen3.5:9b`). Overrides backend/.env.
-      NAT_CHAT_MODEL: qwen3.5:9b
-      OLLAMA_MODEL: qwen3.5:9b
     depends_on:
       finus-nat:
         condition: service_healthy
@@ -52,11 +42,8 @@ services:
       dockerfile: finus_nat/Dockerfile
     ports:
       - "8001:8000"
-    environment:
-      # Fixed for this example (must exist in host Ollama). Edit here to use another tag.
-      OLLAMA_MODEL: qwen3.5:9b
-      OLLAMA_OPENAI_BASE_URL: ${OLLAMA_OPENAI_BASE_URL:-http://host.docker.internal:11434/v1}
-      KIS_MCP_SSE_URL: ${KIS_MCP_SSE_URL:-http://host.docker.internal:3000/sse}
+    env_file:
+      - ./backend/.env
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:

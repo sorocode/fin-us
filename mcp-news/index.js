@@ -6,13 +6,11 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { chromium } from "playwright";
 
-// 1. 서버 인스턴스 생성
 const server = new Server(
   { name: "news-tool", version: "1.0.0" },
   { capabilities: { tools: {} } },
 );
 
-// 2. 도구 목록 정의
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
@@ -60,7 +58,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   ],
 }));
 
-// 3. 도구 실행 로직 (통합 및 보강 버전)
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   const stock_name = args?.stock_name;
@@ -194,7 +191,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   throw new Error("존재하지 않는 도구입니다.");
 });
 
-// 4. 전송 계층 연결
 const transport = new StdioServerTransport();
 await server.connect(transport);
 

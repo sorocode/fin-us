@@ -1,6 +1,3 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -20,7 +17,7 @@
   실행되어 YAML의 `_type` 문자열과 Python 구현이 연결됩니다.
 
   - `branch`   → `_type: fe_branch`     (`*_branch_agent` → 내부 `*_agent` react_agent, `configs/agents/*_agent.yml`)
-  - `finus_api`→ `_type: finus_*`      (Fin-Us MCP stdio; integrate 예제는 `fin-us/mcp-*` 부모 경로)
+  - `finus_api`→ `_type: finus_*`      (Fin-Us MCP stdio; 저장소 루트의 `mcp-*` 또는 레거시 `fin-us/mcp-*`)
   - `stub`     → `_type: fe_stub`       (`common.yml`에 정의; ReAct용 최소 도구)
 """
 
