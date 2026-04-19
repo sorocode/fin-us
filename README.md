@@ -104,14 +104,12 @@ npm run dev
 
 ---
 
-## 🔀 Docker + NeMo NAT (통합 브랜치)
-
-`docker-compose.yml` 하나로 프론트, 통합 FastAPI 백엔드(`backend/Dockerfile`), **finus-nat**(NeMo NAT)까지 기동합니다. 로컬 개발용으로 백엔드에 저장소 루트 볼륨 마운트(`.:/app`)가 들어 있습니다.
+## Docker로 한번에 설치하기
 
 ```bash
 cp backend/.env.example backend/.env
 # 키 입력 후:
-docker compose up --build
+bash scripts/setup_deps.sh
 ```
 
 또는:
@@ -121,4 +119,3 @@ bash scripts/run_stack.sh
 ```
 
 - 로컬에서 `uvicorn --reload`만 쓰고 싶다면 볼륨 마운트된 소스로 호스트에서 실행하면 됩니다.
-- `fin-us-reference/` 로컬 복사본은 merge 후 삭제해도 되며, `.gitignore`에 포함되어 있습니다.
