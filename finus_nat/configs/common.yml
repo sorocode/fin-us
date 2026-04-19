@@ -11,14 +11,16 @@ functions:
     _type: finus_account_balance
 
 llms:
+  # openai_cloud_llm: 빈 model_name이면 NAT가 OPENAI_MODEL → OPENAI_CHAT_MODEL → OLLAMA_MODEL 순으로 채움.
+  # ollama_llm: Docker 등에서 OLLAMA_MODEL 미설정 시에만 아래 기본값 사용.
   openai_cloud_llm:
     _type: openai
     api_key: ${OPENAI_API_KEY}
     base_url: ${OPENAI_API_BASE_URL:-https://api.openai.com/v1}
-    model_name: ${OPENAI_CHAT_MODEL:-gpt-4o-mini}
+    model_name: ""
 
   ollama_llm:
     _type: openai
     api_key: ${OLLAMA_API_KEY:-ollama}
     base_url: ${OLLAMA_OPENAI_BASE_URL:-http://127.0.0.1:11434/v1}
-    model_name: ${OLLAMA_MODEL:-qwen3.5:9b}
+    model_name: ""
