@@ -10,10 +10,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-라우터 에이전트가 선택한 하위 에이전트를 호출하는 도구입니다.
-"""
-
 from pydantic import Field
 
 from nat.builder.builder import Builder

@@ -10,11 +10,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-mcp-news, mcp-trading 도구를 등록합니다.
-index.js를 subprocess로 띄우고 MCP를 call_tool으로 붙입니다.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -88,7 +83,6 @@ async def _mcp_call_tool(
             },
             ensure_ascii=False)
 
-    # cwd: MCP 서버 디렉터리 — Node가 peer 패키지·상대 경로를 일관되게 해석하도록 합니다.
     params = StdioServerParameters(command="node", args=[str(script)], cwd=str(server_dir))
 
     async def _inner() -> str:
@@ -105,7 +99,7 @@ async def _mcp_call_tool(
         return await asyncio.wait_for(_inner(), timeout=timeout_sec)
     except TimeoutError:
         return json.dumps({"error": "mcp_timeout", "tool": tool_name}, ensure_ascii=False)
-    except Exception as exc:  # noqa: BLE001 — surface to the agent as text
+    except Exception as exc:  # noqa: BLE001
         return json.dumps({"error": str(exc), "tool": tool_name}, ensure_ascii=False)
 
 

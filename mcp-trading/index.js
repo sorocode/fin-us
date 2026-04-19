@@ -51,8 +51,6 @@ async function getAccessToken() {
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === "get_balance") {
-    
-    // API 키 설정 확인
     if (!KIS_API_KEY || KIS_API_KEY === "your_kis_api_key_here") {
       return {
         content: [{ 
@@ -66,16 +64,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     try {
       const token = await getAccessToken();
 
-      // 주식 잔고 조회 API 호출 (실무 예시: v1/trading/inquire-balance)
-      // 실제 API 상세 파라미터(CANO, ACNT_PRDT_CD 등)는 계좌에 맞게 조정 필요
       const response = await axios.get(`${KIS_URL}/uapi/domestic-stock/v1/trading/inquire-balance`, {
         headers: {
           "Content-Type": "application/json",
           "authorization": `Bearer ${token}`,
           "appkey": KIS_API_KEY,
           "appsecret": KIS_API_SECRET,
-          "tr_id": "TTTC8434R", // 실전용 TR ID (모의투자는 다를 수 있음)
-          "custtype": "P",      // 개인
+          "tr_id": "TTTC8434R",
+          "custtype": "P",
         },
         params: {
           "CANO": KIS_ACCOUNT_NO.substring(0, 8),
@@ -96,7 +92,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error(`API 오류: ${data.msg1}`);
       }
 
-      // 결과 포맷팅 (주요 자산 정보 추출)
       const summary = data.output2[0];
       const balanceInfo = `
 [계좌 잔고 현황]

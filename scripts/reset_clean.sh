@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Stops this repo's Docker Compose stack, removes its volumes and locally built images,
-# then deletes local node_modules, Python venvs, __pycache__, and common build dirs.
-# Does NOT remove backend/.env (secrets). Use --yes to skip the confirmation prompt.
 
 set -euo pipefail
 

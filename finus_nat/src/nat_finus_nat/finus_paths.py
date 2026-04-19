@@ -10,11 +10,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-절대 경로를 계산합니다. 저장소 루트의 mcp-news, mcp-trading(레거시: fin-us/mcp-*)를 참조합니다.
-FINUS_VENDOR_ROOT 환경 변수가 설정되면 그 경로를 참조합니다.
-"""
-
 from __future__ import annotations
 
 import os

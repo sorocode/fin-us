@@ -10,8 +10,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""FastAPI bridge: fin-us MCP market data and NeMo Agent Toolkit NAT chat."""
-
 from __future__ import annotations
 
 import json

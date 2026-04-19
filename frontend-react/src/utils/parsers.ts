@@ -11,7 +11,6 @@ export const parseTrendData = (trendStr: string | null): TrendItem[] => {
     
     const changeFull = parts[2]?.replace('변동: ', '').trim() || '';
     const isUp = changeFull.includes('상승');
-    // Remove "상승" or "하락" and extra spaces
     const cleanChange = changeFull.replace('상승', '').replace('하락', '').trim();
     const changeVal = cleanChange.split(' (')[0].trim();
     const changePct = changeFull.includes('(') ? changeFull.split('(')[1].replace(')', '') : '0%';
