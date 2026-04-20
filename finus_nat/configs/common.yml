@@ -1,0 +1,24 @@
+functions:
+  fe_stub:
+    _type: fe_stub
+  finus_market_news:
+    _type: finus_market_news
+  finus_investor_trading:
+    _type: finus_investor_trading
+  finus_research_reports:
+    _type: finus_research_reports
+  finus_account_balance:
+    _type: finus_account_balance
+
+llms:
+  openai_cloud_llm:
+    _type: openai
+    api_key: ${OPENAI_API_KEY}
+    base_url: ${OPENAI_API_BASE_URL:-https://api.openai.com/v1}
+    model_name: ""
+
+  ollama_llm:
+    _type: openai
+    api_key: ${OLLAMA_API_KEY:-ollama}
+    base_url: ${OLLAMA_OPENAI_BASE_URL:-http://127.0.0.1:11434/v1}
+    model_name: ""

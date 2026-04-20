@@ -6,3 +6,4 @@ openai
 anthropic
 mcp
 pyyaml
+httpx

@@ -6,13 +6,11 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { chromium } from "playwright";
 
-// 1. 서버 인스턴스 생성
 const server = new Server(
   { name: "news-tool", version: "1.0.0" },
   { capabilities: { tools: {} } },
 );
 
-// 2. 도구 목록 정의
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
@@ -60,7 +58,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   ],
 }));
 
-// 3. 도구 실행 로직 (통합 및 보강 버전)
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   const stock_name = args?.stock_name;
@@ -80,7 +77,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const page = await context.newPage();
 
     if (name === "get_market_news") {
-      // 네이버 뉴스 검색 결과로 이동
       const searchUrl = `https://search.naver.com/search.naver?where=news&query=${encodeURIComponent(stock_name)}&sm=tab_opt&sort=0`;
       await page.goto(searchUrl, { waitUntil: "load" });
 
@@ -111,7 +107,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return { content: [{ type: "text", text: results.length > 0 ? results.join("\n") : `'${stock_name}'에 대한 뉴스를 찾지 못했습니다.` }] };
 
     } else if (name === "get_investor_trading") {
-      // 1. 종목 코드를 찾기 위해 네이버 통합 검색 이용 (금융 검색은 차단될 가능성이 높음)
       const searchUrl = `https://search.naver.com/search.naver?query=${encodeURIComponent(stock_name + " 주가")}`;
       await page.goto(searchUrl, { waitUntil: "load" });
       
@@ -119,7 +114,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const links = Array.from(document.querySelectorAll("a"));
         for (const link of links) {
           const href = link.getAttribute("href") || "";
-          const match = href.match(/code=(\d{6})/); // 종목코드는 6자리 숫자
+          const match = href.match(/code=(\d{6})/);
           if (match) return match[1];
         }
         return null;
@@ -129,7 +124,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return { content: [{ type: "text", text: `'${stock_name}'의 종목 코드를 찾을 수 없습니다.` }], isError: true };
       }
 
-      // 2. 외국인/기관 매매동향 페이지로 이동
       await page.goto(`https://finance.naver.com/item/frgn.naver?code=${code}`, { waitUntil: "load" });
       const tradingData = await page.evaluate((sName) => {
         const rows = Array.from(document.querySelectorAll("table.type2 tr"))
@@ -150,11 +144,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return { content: [{ type: "text", text: tradingData }] };
 
     } else if (name === "get_research_reports") {
-      // 1. 네이버 증권 리서치 종목 분석 페이지로 이동
       const researchUrl = "https://finance.naver.com/research/company_list.naver";
       await page.goto(researchUrl, { waitUntil: "load" });
 
-      // 2. 종목명으로 리포트 필터링 및 데이터 추출
       const reports = await page.evaluate((sName) => {
         const rows = Array.from(document.querySelectorAll("table.type_1 tr"))
           .filter(tr => {
@@ -194,7 +186,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   throw new Error("존재하지 않는 도구입니다.");
 });
 
-// 4. 전송 계층 연결
 const transport = new StdioServerTransport();
 await server.connect(transport);
 

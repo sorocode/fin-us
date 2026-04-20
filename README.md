@@ -101,3 +101,21 @@ npm run dev
 - [ ] NVIDIA NeMo Guardrails를 이용한 투자 가이드라인 준수 레이어 추가
 - [ ] 기술적 분석(차트) 에이전트 추가 도입
 - [ ] AWS App Runner & Docker 기반 클라우드 배포
+
+---
+
+## Docker로 한번에 설치하기
+
+```bash
+cp backend/.env.example backend/.env
+# 키 입력 후:
+bash scripts/setup_deps.sh
+```
+
+또는:
+
+```bash
+bash scripts/run_stack.sh
+```
+
+- 로컬에서 `uvicorn --reload`만 쓰고 싶다면 볼륨 마운트된 소스로 호스트에서 실행하면 됩니다.

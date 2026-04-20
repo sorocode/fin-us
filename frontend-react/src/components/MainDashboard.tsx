@@ -24,7 +24,6 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ trendData, report }) => {
   return (
     <div className="xl:col-span-3 space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Price Area */}
         <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl border border-slate-50">
           <div className="flex items-center gap-3 mb-8">
             <div className="p-2 bg-rose-50 rounded-lg"><Activity className="w-6 h-6 text-rose-500" /></div>
@@ -36,7 +35,6 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ trendData, report }) => {
             </ResponsiveContainer>
           </div>
         </div>
-        {/* Volume Area */}
         <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl border border-slate-50">
           <div className="flex items-center gap-3 mb-8">
             <div className="p-2 bg-slate-50 rounded-lg"><BarChart3 className="w-6 h-6 text-slate-500" /></div>
@@ -50,7 +48,6 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ trendData, report }) => {
         </div>
       </div>
 
-      {/* Investor Flow Chart */}
       <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl border border-slate-50">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
