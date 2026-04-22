@@ -5,9 +5,9 @@ functions:
     _type: react_agent
     llm_name: openai_cloud_llm
     tool_names:
-      - finus_market_news
-      - finus_investor_trading
-      - finus_research_reports
+      - mcp-news-get-market-news
+      - mcp-news-get-investor-trading
+      - mcp-news-get-research-reports
     verbose: false
     use_native_tool_calling: false
     parse_agent_response_max_retries: 2

@@ -5,10 +5,10 @@ functions:
     _type: react_agent
     llm_name: openai_cloud_llm
     tool_names:
-      - finus_market_news
-      - finus_investor_trading
-      - finus_research_reports
-      - finus_account_balance
+      - mcp-news-get-market-news
+      - mcp-news-get-investor-trading
+      - mcp-news-get-research-reports
+      - kis-trading-mcp-tool
     verbose: false
     use_native_tool_calling: false
     parse_agent_response_max_retries: 2
@@ -23,4 +23,4 @@ functions:
   strategy_branch_agent:
     _type: fe_branch
     inner_function_name: strategy_agent
-    tool_description: "Strategy: Fin-Us mcp-news + mcp-trading balance + LLM synthesis."
+    tool_description: "Strategy: Fin-Us mcp-news + Kis Trading MCP balance + LLM synthesis."

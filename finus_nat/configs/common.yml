@@ -1,14 +1,26 @@
 functions:
+  # nat_finus_nat/stub.py — 외부 MCP 없음, 라우터 분기용 플레이스홀더
   fe_stub:
     _type: fe_stub
-  finus_market_news:
+
+  # fin-us/mcp-news(stdio Node) →  Playwright 네이버 종목 뉴스 3건
+  mcp-news-get-market-news:
     _type: finus_market_news
-  finus_investor_trading:
+
+  # fin-us/mcp-news(stdio) → get_investor_trading
+  mcp-news-get-investor-trading:
     _type: finus_investor_trading
-  finus_research_reports:
+
+  # fin-us/mcp-news(stdio) → get_research_reports
+  mcp-news-get-research-reports:
     _type: finus_research_reports
-  finus_account_balance:
+
+  # Kis Trading MCP(SSE, Docker 기본 kis-trading-mcp:3000)
+  kis-trading-mcp-tool:
     _type: finus_account_balance
+    mcp_transport: sse
+    mcp_url: ${FINUS_KIS_TRADING_MCP_URL:-http://kis-trading-mcp:3000/sse}
+    trading_tool_name: get_balance
 
 llms:
   openai_cloud_llm:

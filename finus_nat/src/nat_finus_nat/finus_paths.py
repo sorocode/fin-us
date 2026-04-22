@@ -26,10 +26,10 @@ def fin_us_vendor_root() -> Path:
         return Path(env).expanduser().resolve()
     integrate_root = finus_nat_example_root().parent
     flat = integrate_root
-    if (flat / "mcp-news" / "index.js").is_file() and (flat / "mcp-trading" / "index.js").is_file():
+    if (flat / "mcp-news" / "index.js").is_file():
         return flat
     fin_us_home = integrate_root / "fin-us"
-    if (fin_us_home / "mcp-news" / "index.js").is_file() and (fin_us_home / "mcp-trading" / "index.js").is_file():
+    if (fin_us_home / "mcp-news" / "index.js").is_file():
         return fin_us_home
     return finus_nat_example_root() / "vendor" / "fin_us"
 
