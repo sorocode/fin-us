@@ -5,6 +5,27 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { chromium } from "playwright";
+import {
+  CATEGORIES,
+  NAVER_INDUSTRIES,
+  fetchResearchReportsWithText,
+} from "./naverResearch.js";
+import {
+  getDb,
+  searchReports,
+  queryReports,
+  getReport,
+  reportsStats,
+  reindexDownloads,
+} from "./src/db.js";
+
+// DB 워밍업 (인덱스/FTS 스키마 보장)
+getDb();
+
+const CATEGORY_KEYS = Object.keys(CATEGORIES);
+const CATEGORY_HINT = CATEGORY_KEYS
+  .map((k) => `${k}(${CATEGORIES[k].label})`)
+  .join(", ");
 
 const server = new Server(
   { name: "news-tool", version: "1.0.0" },
@@ -43,30 +64,261 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "get_research_reports",
-      description: "네이버 증권 리서치 페이지에서 특정 종목의 증권사 리포트 목록을 가져옵니다.",
+      description:
+        "네이버 금융 리서치를 카테고리별로 검색하고 발견된 리포트 PDF를 로컬에 저장한 뒤 본문 텍스트까지 추출해 한 번에 반환합니다. " +
+        `카테고리: ${CATEGORY_HINT}. ` +
+        "종목 리포트(company)는 query에 종목명(예: '삼성전자') 또는 6자리 종목코드(예: '005930')를 넣으면 내부에서 네이버 공식 자동완성으로 코드를 resolve하여 정확 매칭합니다. " +
+        `산업 리포트(industry)는 query에 네이버 업종 드롭다운 값 중 하나를 넣으세요. 가능한 값: ${NAVER_INDUSTRIES.join(", ")}. ` +
+        "시황(market_info)/투자(invest)/경제(economy)/채권(debenture)은 query가 제목+내용 키워드 검색입니다. " +
+        "응답의 reports[].text에는 상위 max_text_reports 건의 본문이 chars_per_report 길이까지 절삭되어 인라인됩니다.",
       inputSchema: {
         type: "object",
         properties: {
-          stock_name: {
+          category: {
             type: "string",
-            description: "주식 종목명 (예: 삼성전자, SK하이닉스)",
+            enum: CATEGORY_KEYS,
+            description: "리포트 카테고리 (종목=company, 시황=market_info, 산업=industry 등)",
+          },
+          query: {
+            type: "string",
+            description: "검색어. 예: '삼성전자', '005930', '반도체', '원전'. 비워두면 최신 리포트를 가져옵니다.",
+          },
+          from_date: { type: "string", description: "시작일 YYYY-MM-DD (query 비어있을 때만 적용)" },
+          to_date: { type: "string", description: "종료일 YYYY-MM-DD" },
+          broker: { type: "string", description: "증권사명 포함 필터 (예: '한화')" },
+          limit: {
+            type: "number",
+            minimum: 1,
+            maximum: 50,
+            description: "검색·다운로드할 리포트 최대 개수 (기본 5)",
+          },
+          chars_per_report: {
+            type: "number",
+            minimum: 500,
+            maximum: 20000,
+            description: "각 리포트에 인라인할 텍스트 최대 길이 (기본 4000자)",
+          },
+          max_text_reports: {
+            type: "number",
+            minimum: 1,
+            maximum: 20,
+            description: "본문 텍스트를 실제로 붙여 반환할 리포트 개수 (기본 5)",
+          },
+          save_dir: {
+            type: "string",
+            description: "PDF/TXT 저장 디렉터리 (미지정 시 RESEARCH_DOWNLOAD_DIR 또는 downloads/)",
           },
         },
-        required: ["stock_name"],
+        required: ["category"],
+      },
+    },
+    {
+      name: "search_stored_reports",
+      description:
+        "로컬에 다운로드/인덱싱된 리서치 리포트를 SQLite FTS5로 빠르게 검색합니다. 제목/증권사/종목명/본문 텍스트에 매칭되며, BM25 랭크와 ⟨하이라이트⟩ snippet을 반환합니다. " +
+        "FTS 결과가 없으면 LIKE 폴백(한글 부분검색)으로 재검색합니다. 외부 네트워크 호출 없음.",
+      inputSchema: {
+        type: "object",
+        required: ["query"],
+        properties: {
+          query: {
+            type: "string",
+            description: "검색어. FTS5 문법 지원 (예: '반도체 AND 목표가', '엔비디아 OR NVIDIA').",
+          },
+          category: {
+            type: "string",
+            enum: CATEGORY_KEYS,
+            description: "(선택) 카테고리 한정 (company/industry/...)",
+          },
+          stock_code: { type: "string", description: "(선택) 6자리 종목코드로 한정" },
+          broker: { type: "string", description: "(선택) 증권사명 부분 매치" },
+          limit: { type: "number", minimum: 1, maximum: 500, default: 20 },
+        },
+      },
+    },
+    {
+      name: "query_stored_reports",
+      description:
+        "로컬 리포트 DB 복합 조회: category/stock_code/stock_name/broker/nid/from_date/to_date/has_text/FTS query를 자유롭게 결합. " +
+        "예) 최근 30일 '005930' 리포트 / 한화증권의 company 리포트 / 본문 텍스트가 있는 것만.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "(선택) FTS 검색어" },
+          category: { type: "string", enum: CATEGORY_KEYS },
+          stock_code: { type: "string", description: "6자리 종목코드" },
+          stock_name: { type: "string", description: "종목명 부분 매치" },
+          broker: { type: "string", description: "증권사명 부분 매치" },
+          nid: { type: "string", description: "네이버 리포트 고유 id" },
+          from_date: { type: "string", description: "YYYY-MM-DD 이상" },
+          to_date: { type: "string", description: "YYYY-MM-DD 이하" },
+          has_text: {
+            type: "boolean",
+            description: "true면 본문 텍스트가 있는 행만, false면 없는 행만",
+          },
+          limit: { type: "number", minimum: 1, maximum: 500, default: 50 },
+          offset: { type: "number", minimum: 0, default: 0 },
+          order_by: {
+            type: "string",
+            enum: ["date_desc", "rank"],
+            default: "date_desc",
+            description: "query가 있을 때 rank(BM25) 가능",
+          },
+        },
+      },
+    },
+    {
+      name: "get_stored_report",
+      description: "로컬 리포트 DB에서 한 건 조회. id / nid / pdf_path / text_path 중 하나로 지정.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          id: { type: "number" },
+          nid: { type: "string" },
+          pdf_path: { type: "string" },
+          text_path: { type: "string" },
+        },
+      },
+    },
+    {
+      name: "stored_reports_stats",
+      description:
+        "로컬 리포트 DB 통계. 총 건수, 본문 보유 수, PDF 보유 수, 카테고리/증권사별 분포, 기간.",
+      inputSchema: { type: "object", properties: {} },
+    },
+    {
+      name: "reindex_stored_reports",
+      description:
+        "downloads/ 폴더(또는 지정 dir)를 스캔해 기존 PDF/TXT 파일을 DB에 일괄 재등록합니다. " +
+        "DB에 있지만 파일이 사라진 행은 기본적으로 제거(prune_missing=true).",
+      inputSchema: {
+        type: "object",
+        properties: {
+          dir: {
+            type: "string",
+            description: "스캔할 디렉터리 (미지정 시 RESEARCH_DOWNLOAD_DIR 또는 downloads/)",
+          },
+          prune_missing: {
+            type: "boolean",
+            default: true,
+            description: "파일이 사라진 DB 행 제거 여부",
+          },
+        },
       },
     },
   ],
 }));
 
+function jsonText(obj) {
+  return { content: [{ type: "text", text: JSON.stringify(obj, null, 2) }] };
+}
+
+function errorText(message) {
+  return { content: [{ type: "text", text: message }], isError: true };
+}
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  const stock_name = args?.stock_name;
 
+  if (name === "search_stored_reports") {
+    try {
+      const rows = searchReports({
+        query: args?.query,
+        category: args?.category,
+        stock_code: args?.stock_code,
+        broker: args?.broker,
+        limit: args?.limit ?? 20,
+      });
+      return jsonText({ count: rows.length, rows });
+    } catch (err) {
+      return errorText(`로컬 리포트 검색 실패: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  if (name === "query_stored_reports") {
+    try {
+      const rows = queryReports({
+        query: args?.query,
+        category: args?.category,
+        stock_code: args?.stock_code,
+        stock_name: args?.stock_name,
+        broker: args?.broker,
+        nid: args?.nid,
+        from_date: args?.from_date,
+        to_date: args?.to_date,
+        has_text: args?.has_text,
+        limit: args?.limit ?? 50,
+        offset: args?.offset ?? 0,
+        order_by: args?.order_by || "date_desc",
+      });
+      return jsonText({ count: rows.length, rows });
+    } catch (err) {
+      return errorText(`로컬 리포트 조회 실패: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  if (name === "get_stored_report") {
+    try {
+      const row = getReport({
+        id: args?.id,
+        nid: args?.nid,
+        pdf_path: args?.pdf_path,
+        text_path: args?.text_path,
+      });
+      if (!row) return jsonText({ found: false });
+      return jsonText({ found: true, row });
+    } catch (err) {
+      return errorText(`리포트 조회 실패: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  if (name === "stored_reports_stats") {
+    try {
+      return jsonText(reportsStats());
+    } catch (err) {
+      return errorText(`stats 실패: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  if (name === "reindex_stored_reports") {
+    try {
+      const result = reindexDownloads({
+        dir: args?.dir,
+        pruneMissing: args?.prune_missing !== false,
+      });
+      return jsonText(result);
+    } catch (err) {
+      return errorText(`reindex 실패: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  if (name === "get_research_reports") {
+    try {
+      if (!args?.category) {
+        return errorText("category가 필요합니다 (company/industry/market_info/invest/economy/debenture).");
+      }
+      const result = await fetchResearchReportsWithText({
+        category: args.category,
+        query: args?.query,
+        from_date: args?.from_date,
+        to_date: args?.to_date,
+        broker: args?.broker,
+        limit: args?.limit ?? 5,
+        save_dir: args?.save_dir,
+        chars_per_report: args?.chars_per_report ?? 4000,
+        max_text_reports: args?.max_text_reports ?? 5,
+      });
+      return jsonText(result);
+    } catch (err) {
+      return errorText(
+        `리서치 종합 조회 실패: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
+
+  const stock_name = args?.stock_name;
   if (!stock_name) {
-    return {
-      content: [{ type: "text", text: "에러: stock_name 파라미터가 누락되었습니다." }],
-      isError: true,
-    };
+    return errorText("에러: stock_name 파라미터가 누락되었습니다.");
   }
 
   const browser = await chromium.launch({ headless: true });
@@ -142,48 +394,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }, stock_name);
 
       return { content: [{ type: "text", text: tradingData }] };
-
-    } else if (name === "get_research_reports") {
-      const researchUrl = "https://finance.naver.com/research/company_list.naver";
-      await page.goto(researchUrl, { waitUntil: "load" });
-
-      const reports = await page.evaluate((sName) => {
-        const rows = Array.from(document.querySelectorAll("table.type_1 tr"))
-          .filter(tr => {
-            const cells = tr.querySelectorAll("td");
-            if (cells.length < 2) return false;
-            const target = cells[0].innerText.trim();
-            const title = cells[1].innerText.trim();
-            return target === sName || title.includes(sName);
-          })
-          .map(tr => {
-            const cells = tr.querySelectorAll("td");
-            return {
-              stock: cells[0].innerText.trim(),
-              title: cells[1].innerText.trim(),
-              company: cells[2].innerText.trim(),
-              date: cells[4].innerText.trim(),
-            };
-          })
-          .slice(0, 5);
-
-        if (rows.length === 0) return `해당 종목('${sName}')에 대한 최근 리서치 리포트를 찾을 수 없습니다.`;
-
-        let reportText = `[${sName}] 네이버 증권 최근 리서치 리포트\n`;
-        rows.forEach(r => {
-          reportText += `${r.date} | ${r.company} | ${r.title}\n`;
-        });
-        return reportText;
-      }, stock_name);
-
-      return { content: [{ type: "text", text: reports }] };
     }
   } catch (error) {
     return { content: [{ type: "text", text: `에러 발생: ${error.message}` }], isError: true };
   } finally {
     await browser.close();
   }
-  throw new Error("존재하지 않는 도구입니다.");
+
+  return errorText(`존재하지 않는 도구: ${name}`);
 });
 
 const transport = new StdioServerTransport();
