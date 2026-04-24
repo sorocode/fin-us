@@ -10,17 +10,6 @@ import {
   NAVER_INDUSTRIES,
   fetchResearchReportsWithText,
 } from "./naverResearch.js";
-import {
-  getDb,
-  searchReports,
-  queryReports,
-  getReport,
-  reportsStats,
-  reindexDownloads,
-} from "./src/db.js";
-
-// DB 워밍업 (인덱스/FTS 스키마 보장)
-getDb();
 
 const CATEGORY_KEYS = Object.keys(CATEGORIES);
 const CATEGORY_HINT = CATEGORY_KEYS
@@ -106,104 +95,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           save_dir: {
             type: "string",
-            description: "PDF/TXT 저장 디렉터리 (미지정 시 RESEARCH_DOWNLOAD_DIR 또는 downloads/)",
+            description:
+              "상위 저장 디렉터리 (미지정 시 RESEARCH_DOWNLOAD_DIR 또는 downloads/). " +
+              "매 호출마다 이 경로 아래에 run_<타임스탬프>_<랜덤> 형식의 새 폴더가 만들어지고, PDF·TXT는 그 안에만 저장됩니다.",
           },
         },
         required: ["category"],
-      },
-    },
-    {
-      name: "search_stored_reports",
-      description:
-        "로컬에 다운로드/인덱싱된 리서치 리포트를 SQLite FTS5로 빠르게 검색합니다. 제목/증권사/종목명/본문 텍스트에 매칭되며, BM25 랭크와 ⟨하이라이트⟩ snippet을 반환합니다. " +
-        "FTS 결과가 없으면 LIKE 폴백(한글 부분검색)으로 재검색합니다. 외부 네트워크 호출 없음.",
-      inputSchema: {
-        type: "object",
-        required: ["query"],
-        properties: {
-          query: {
-            type: "string",
-            description: "검색어. FTS5 문법 지원 (예: '반도체 AND 목표가', '엔비디아 OR NVIDIA').",
-          },
-          category: {
-            type: "string",
-            enum: CATEGORY_KEYS,
-            description: "(선택) 카테고리 한정 (company/industry/...)",
-          },
-          stock_code: { type: "string", description: "(선택) 6자리 종목코드로 한정" },
-          broker: { type: "string", description: "(선택) 증권사명 부분 매치" },
-          limit: { type: "number", minimum: 1, maximum: 500, default: 20 },
-        },
-      },
-    },
-    {
-      name: "query_stored_reports",
-      description:
-        "로컬 리포트 DB 복합 조회: category/stock_code/stock_name/broker/nid/from_date/to_date/has_text/FTS query를 자유롭게 결합. " +
-        "예) 최근 30일 '005930' 리포트 / 한화증권의 company 리포트 / 본문 텍스트가 있는 것만.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "(선택) FTS 검색어" },
-          category: { type: "string", enum: CATEGORY_KEYS },
-          stock_code: { type: "string", description: "6자리 종목코드" },
-          stock_name: { type: "string", description: "종목명 부분 매치" },
-          broker: { type: "string", description: "증권사명 부분 매치" },
-          nid: { type: "string", description: "네이버 리포트 고유 id" },
-          from_date: { type: "string", description: "YYYY-MM-DD 이상" },
-          to_date: { type: "string", description: "YYYY-MM-DD 이하" },
-          has_text: {
-            type: "boolean",
-            description: "true면 본문 텍스트가 있는 행만, false면 없는 행만",
-          },
-          limit: { type: "number", minimum: 1, maximum: 500, default: 50 },
-          offset: { type: "number", minimum: 0, default: 0 },
-          order_by: {
-            type: "string",
-            enum: ["date_desc", "rank"],
-            default: "date_desc",
-            description: "query가 있을 때 rank(BM25) 가능",
-          },
-        },
-      },
-    },
-    {
-      name: "get_stored_report",
-      description: "로컬 리포트 DB에서 한 건 조회. id / nid / pdf_path / text_path 중 하나로 지정.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          id: { type: "number" },
-          nid: { type: "string" },
-          pdf_path: { type: "string" },
-          text_path: { type: "string" },
-        },
-      },
-    },
-    {
-      name: "stored_reports_stats",
-      description:
-        "로컬 리포트 DB 통계. 총 건수, 본문 보유 수, PDF 보유 수, 카테고리/증권사별 분포, 기간.",
-      inputSchema: { type: "object", properties: {} },
-    },
-    {
-      name: "reindex_stored_reports",
-      description:
-        "downloads/ 폴더(또는 지정 dir)를 스캔해 기존 PDF/TXT 파일을 DB에 일괄 재등록합니다. " +
-        "DB에 있지만 파일이 사라진 행은 기본적으로 제거(prune_missing=true).",
-      inputSchema: {
-        type: "object",
-        properties: {
-          dir: {
-            type: "string",
-            description: "스캔할 디렉터리 (미지정 시 RESEARCH_DOWNLOAD_DIR 또는 downloads/)",
-          },
-          prune_missing: {
-            type: "boolean",
-            default: true,
-            description: "파일이 사라진 DB 행 제거 여부",
-          },
-        },
       },
     },
   ],
@@ -219,78 +116,6 @@ function errorText(message) {
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-
-  if (name === "search_stored_reports") {
-    try {
-      const rows = searchReports({
-        query: args?.query,
-        category: args?.category,
-        stock_code: args?.stock_code,
-        broker: args?.broker,
-        limit: args?.limit ?? 20,
-      });
-      return jsonText({ count: rows.length, rows });
-    } catch (err) {
-      return errorText(`로컬 리포트 검색 실패: ${err instanceof Error ? err.message : err}`);
-    }
-  }
-
-  if (name === "query_stored_reports") {
-    try {
-      const rows = queryReports({
-        query: args?.query,
-        category: args?.category,
-        stock_code: args?.stock_code,
-        stock_name: args?.stock_name,
-        broker: args?.broker,
-        nid: args?.nid,
-        from_date: args?.from_date,
-        to_date: args?.to_date,
-        has_text: args?.has_text,
-        limit: args?.limit ?? 50,
-        offset: args?.offset ?? 0,
-        order_by: args?.order_by || "date_desc",
-      });
-      return jsonText({ count: rows.length, rows });
-    } catch (err) {
-      return errorText(`로컬 리포트 조회 실패: ${err instanceof Error ? err.message : err}`);
-    }
-  }
-
-  if (name === "get_stored_report") {
-    try {
-      const row = getReport({
-        id: args?.id,
-        nid: args?.nid,
-        pdf_path: args?.pdf_path,
-        text_path: args?.text_path,
-      });
-      if (!row) return jsonText({ found: false });
-      return jsonText({ found: true, row });
-    } catch (err) {
-      return errorText(`리포트 조회 실패: ${err instanceof Error ? err.message : err}`);
-    }
-  }
-
-  if (name === "stored_reports_stats") {
-    try {
-      return jsonText(reportsStats());
-    } catch (err) {
-      return errorText(`stats 실패: ${err instanceof Error ? err.message : err}`);
-    }
-  }
-
-  if (name === "reindex_stored_reports") {
-    try {
-      const result = reindexDownloads({
-        dir: args?.dir,
-        pruneMissing: args?.prune_missing !== false,
-      });
-      return jsonText(result);
-    } catch (err) {
-      return errorText(`reindex 실패: ${err instanceof Error ? err.message : err}`);
-    }
-  }
 
   if (name === "get_research_reports") {
     try {

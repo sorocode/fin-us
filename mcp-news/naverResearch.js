@@ -1,18 +1,9 @@
 import { load as cheerioLoad } from "cheerio";
 import iconv from "iconv-lite";
+import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { upsertReport } from "./src/db.js";
-
-function safeUpsertReport(row) {
-  try {
-    return upsertReport(row);
-  } catch (err) {
-    console.error("[db] upsertReport 실패:", err?.message || err);
-    return null;
-  }
-}
 
 const require = createRequire(import.meta.url);
 
@@ -419,25 +410,6 @@ export async function searchResearchReports({
     if (pageRows === 0) break;
   }
 
-  // 수집한 메타를 DB에 경량 인덱싱(다운로드 없이 nid 키로).
-  // 이후 동일 리포트가 다운로드되면 같은 행이 merge 업데이트됨.
-  for (const r of collected) {
-    if (!r.nid) continue;
-    safeUpsertReport({
-      nid: r.nid,
-      category: r.category ?? null,
-      stock_name: r.stock_name ?? null,
-      stock_code: r.stock_code ?? null,
-      industry: r.industry ?? null,
-      title: r.title ?? null,
-      broker: r.broker ?? null,
-      date: r.date ?? null,
-      views: r.views ?? null,
-      detail_url: r.detail_url ?? null,
-      pdf_url: r.pdf_url ?? null,
-    });
-  }
-
   return collected;
 }
 
@@ -552,15 +524,6 @@ export async function extractResearchPdfText({
   await fs.mkdir(path.dirname(outPath), { recursive: true });
   await fs.writeFile(outPath, text, "utf8");
 
-  safeUpsertReport({
-    pdf_url: hasUrl ? String(pdf_url).trim() : null,
-    pdf_path: hasPath ? path.resolve(String(pdf_path).trim()) : null,
-    text_path: outPath,
-    text,
-    pages,
-    character_count,
-  });
-
   return {
     text_path: outPath,
     pages,
@@ -577,12 +540,26 @@ function defaultDownloadDir() {
   );
 }
 
+/**
+ * 한 번의 리서치 파이프라인 호출마다 parent 아래에 고유 하위 폴더를 만들고 그 경로를 반환한다.
+ * @param {string | undefined} saveDirOpt 미지정이면 {@link defaultDownloadDir}
+ */
+async function createSessionDownloadDir(saveDirOpt) {
+  const parent = saveDirOpt
+    ? path.resolve(String(saveDirOpt).trim())
+    : defaultDownloadDir();
+  await fs.mkdir(parent, { recursive: true });
+  const sessionName = `run_${new Date().toISOString().replace(/[:.]/g, "-")}_${randomBytes(4).toString("hex")}`;
+  const sessionDir = path.join(parent, sessionName);
+  await fs.mkdir(sessionDir, { recursive: true });
+  return sessionDir;
+}
+
 export async function downloadResearchPdf({
   pdf_url,
   save_dir,
   filename,
   also_extract_text = false,
-  report_meta,
 } = {}) {
   const buf = await fetchPdfBufferFromUrl(pdf_url);
 
@@ -602,13 +579,9 @@ export async function downloadResearchPdf({
   await fs.writeFile(fullPath, buf);
 
   let text_extract = null;
-  let extractedText = null;
-  let extractedPages = null;
-  let extractedCharCount = null;
-  let textPath = null;
   if (also_extract_text) {
     const { text, pages, character_count } = await extractTextFromPdfBuffer(buf);
-    textPath = fullPath.replace(/\.pdf$/i, ".txt");
+    const textPath = fullPath.replace(/\.pdf$/i, ".txt");
     await fs.writeFile(textPath, text, "utf8");
     text_extract = {
       path: textPath,
@@ -616,20 +589,7 @@ export async function downloadResearchPdf({
       character_count,
       preview: text.slice(0, 400),
     };
-    extractedText = text;
-    extractedPages = pages;
-    extractedCharCount = character_count;
   }
-
-  safeUpsertReport({
-    pdf_url,
-    pdf_path: fullPath,
-    text_path: textPath,
-    text: extractedText,
-    pages: extractedPages,
-    character_count: extractedCharCount,
-    ...(report_meta || {}),
-  });
 
   return {
     url: pdf_url,
@@ -661,18 +621,6 @@ export async function searchAndDownloadResearchReports(options = {}) {
         save_dir: saveDir,
         filename: niceName,
         also_extract_text,
-        report_meta: {
-          nid: r.nid ?? null,
-          category: r.category ?? null,
-          stock_name: r.stock_name ?? null,
-          stock_code: r.stock_code ?? null,
-          industry: r.industry ?? null,
-          title: r.title ?? null,
-          broker: r.broker ?? null,
-          date: r.date ?? null,
-          views: r.views ?? null,
-          detail_url: r.detail_url ?? null,
-        },
       });
       downloads.push({ ...r, download: result });
     } catch (err) {
@@ -701,18 +649,22 @@ export async function searchAndDownloadResearchReports(options = {}) {
  *   save_dir?: string,
  *   chars_per_report?: number,
  *   max_text_reports?: number,
- * }} opts
+ * }} opts `save_dir`가 있으면 그 디렉터리를 상위로 쓰고, 매 호출마다 그 아래 새 `run_*` 폴더에 PDF/TXT를 저장한다.
  */
 export async function fetchResearchReportsWithText(opts = {}) {
   const {
     chars_per_report = 4000,
     max_text_reports = 5,
+    save_dir: saveDirOpt,
     ...rest
   } = opts;
+
+  const sessionDir = await createSessionDownloadDir(saveDirOpt);
 
   const bundle = await searchAndDownloadResearchReports({
     ...rest,
     also_extract_text: true,
+    save_dir: sessionDir,
   });
 
   const reports = [];
