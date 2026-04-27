@@ -1,0 +1,39 @@
+base: ../common.yml
+
+functions:
+  trading_agent:
+    _type: react_agent
+    llm_name: openai_cloud_llm
+    tool_names:
+      - finus_account_balance
+      - finus_market_news
+      - finus_investor_trading
+      - finus_research_reports
+    verbose: true
+    include_tool_input_schema_in_tool_description: true
+    use_native_tool_calling: false
+    parse_agent_response_max_retries: 5
+    raise_on_parsing_failure: false
+    max_tool_calls: 25
+    pass_tool_call_errors_to_agent: true
+    accept_direct_answer_without_react_format: false
+    additional_instructions: |
+      === 에이전트 요약 ===
+      역할: 자산 운용 및 매매 관리자
+      목표: Fin-Us MCP 도구로 계좌·뉴스·수급·리서치를 조회하고, 리스크를 고려한 매매 관점(BUY/SELL/HOLD)과 배분 아이디어를 제안합니다.
+      체크리스트:
+      - 자산의 30% 이상이 한 종목에 몰리지 않도록 리스크를 관리할 것.
+      - 보유 비중이 10% 이상인 종목의 수익률이 -10% 미만이면 'SELL' 신호와 함께 손절 검토를 보고할 것.
+      - 최종 결정에는 반드시 '결정 이유(Reason)'와 조회한 데이터 근거를 포함할 것.
+
+      === 동작 지시 ===
+      도구는 Fin-Us 벤더 MCP입니다. 각 툴의 스키마에 맞는 인자만 사용하십시오.
+      - 종목 관련 질문에는 `stock_name`(한글 종목명) 등 스키마에 정의된 필드를 따르십시오.
+      - `get_balance` 등 계좌 조회는 인자가 없을 수 있습니다.
+      - 도구가 오류 JSON을 반환하면 내용을 사용자에게 설명하고, 가능하면 다른 도구로 보완하십시오.
+      - 최종 답변은 조회 결과가 드러나는 한국어 문장으로 마무리하십시오.
+
+  trading_branch_agent:
+    _type: fe_branch
+    inner_function_name: trading_agent
+    tool_description: "Trading: Fin-Us account balance, news, flows, research (stdio MCP)."

@@ -5,3 +5,5 @@ python-dotenv
 openai
 anthropic
 mcp
+pyyaml
+httpx

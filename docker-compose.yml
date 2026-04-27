@@ -1,5 +1,4 @@
 services:
-  # Frontend service
   frontend:
     build:
       context: ./frontend-react
@@ -10,10 +9,12 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_BASE_URL=http://localhost:8000/api/v1
+    depends_on:
+      backend:
+        condition: service_started
     networks:
       - fin-us-network
 
-  # Python FastAPI backend service
   backend:
     build:
       context: .
@@ -23,27 +24,34 @@ services:
     volumes:
       - .:/app
       - /app/backend/venv
-      - /app/mcp-news/node_modules
-      - /app/mcp-trading/node_modules
     env_file:
       - ./backend/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      NAT_BASE_URL: http://finus-nat:8000
+    depends_on:
+      finus-nat:
+        condition: service_healthy
     networks:
       - fin-us-network
 
-  # Node.js Express backend service
-  backend-express:
+  finus-nat:
     build:
       context: .
-      dockerfile: backend-express/Dockerfile
+      dockerfile: finus_nat/Dockerfile
     ports:
-      - "3000:3000"
-    volumes:
-      - .:/app
-      - /app/backend-express/node_modules
-      - /app/mcp-news/node_modules
-      - /app/mcp-trading/node_modules
+      - "8001:8000"
     env_file:
       - ./backend/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
     networks:
       - fin-us-network
 

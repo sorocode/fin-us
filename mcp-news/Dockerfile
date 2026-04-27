@@ -1,7 +1,5 @@
-# MCP News Server Dockerfile
 FROM node:20-slim
 
-# Install system dependencies for Playwright
 RUN apt-get update && apt-get install -y \
     libnss3 \
     libnspr4 \
@@ -24,18 +22,11 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy package.json and install dependencies
 COPY package*.json ./
 RUN npm install
 
-# Install Playwright browsers
 RUN npx playwright install --with-deps chromium
 
-# Copy source code
 COPY . .
 
-# Since MCP News is called via stdio, it doesn't strictly need a CMD 
-# if it's just meant to be a library/script for other containers.
-# But if it's meant to be its own service (over network), it would need one.
-# For now, let's just make it available.
 CMD ["node", "index.js"]
