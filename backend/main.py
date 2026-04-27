@@ -38,13 +38,13 @@ load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-OPENAI_CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
+OPENAI_CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-5.4-mini")
 ANTHROPIC_CHAT_MODEL = os.getenv("ANTHROPIC_CHAT_MODEL", "claude-sonnet-4-20250514")
 
 NAT_BASE_URL = os.environ.get("NAT_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 NAT_CHAT_MODEL = os.environ.get(
     "NAT_CHAT_MODEL",
-    os.environ.get("OPENAI_CHAT_MODEL", "gpt-4o-mini"),
+    os.environ.get("OPENAI_CHAT_MODEL", "gpt-5.4-mini"),
 )
 
 OLLAMA_API_KEY = os.environ.get("OLLAMA_API_KEY", "ollama")
