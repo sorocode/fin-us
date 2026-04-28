@@ -1,15 +1,16 @@
-// FinUsApiClient.cs — FastAPI 백엔드와 HTTP로 통신한다.
+// ApiClient.cs — FastAPI 백엔드와 HTTP로 통신한다.
 // UnityWebRequest + IEnumerator 코루틴: 프레임을 막지 않고 응답을 기다린 뒤 콜백으로 결과를 넘긴다.
-// 성공 본문은 JsonUtility로 파싱(모델은 FinUsApiModels). 실패 시 본문에 detail이 있으면 그 문자열을 우선 사용한다.
+// 성공 본문은 JsonUtility로 파싱(모델은 ApiModels). 실패 시 본문에 detail이 있으면 그 문자열을 우선 사용한다.
 using System;
 using System.Collections;
+using UnityEngine;
 using UnityEngine.Networking;
 
-public class FinUsApiClient
+public class ApiClient
 {
     private readonly string apiBaseUrl;
 
-    public FinUsApiClient(string apiBaseUrl)
+    public ApiClient(string apiBaseUrl)
     {
         this.apiBaseUrl = apiBaseUrl;
     }
@@ -37,8 +38,8 @@ public class FinUsApiClient
             yield break;
         }
 
-        var newsResponse = UnityEngine.JsonUtility.FromJson<NewsApiResponse>(newsReq.downloadHandler.text);
-        var trendResponse = UnityEngine.JsonUtility.FromJson<TrendApiResponse>(trendReq.downloadHandler.text);
+        var newsResponse = JsonUtility.FromJson<NewsApiResponse>(newsReq.downloadHandler.text);
+        var trendResponse = JsonUtility.FromJson<TrendApiResponse>(trendReq.downloadHandler.text);
 
         onSuccess?.Invoke(new DataOnlyResult
         {
@@ -60,7 +61,7 @@ public class FinUsApiClient
             yield break;
         }
 
-        var parsed = UnityEngine.JsonUtility.FromJson<AnalyzeApiResponse>(req.downloadHandler.text);
+        var parsed = JsonUtility.FromJson<AnalyzeApiResponse>(req.downloadHandler.text);
         if (parsed == null || parsed.status != "success" || parsed.data == null)
         {
             onError?.Invoke("분석 데이터를 파싱하지 못했습니다.");
@@ -70,13 +71,35 @@ public class FinUsApiClient
         onSuccess?.Invoke(parsed.data);
     }
 
+    public IEnumerator FetchBalance(Action<string> onSuccess, Action<string> onError)
+    {
+        var balanceUrl = $"{apiBaseUrl}/api/v1/trading/balance";
+        using var req = UnityWebRequest.Get(balanceUrl);
+        yield return req.SendWebRequest();
+
+        if (req.result != UnityWebRequest.Result.Success)
+        {
+            onError?.Invoke(ExtractErrorMessage(req, "잔고 조회 실패"));
+            yield break;
+        }
+
+        var parsed = JsonUtility.FromJson<BalanceApiResponse>(req.downloadHandler.text);
+        if (parsed == null || parsed.status != "success" || parsed.data == null)
+        {
+            onError?.Invoke("잔고 데이터를 파싱하지 못했습니다.");
+            yield break;
+        }
+
+        onSuccess?.Invoke(parsed.data.report ?? string.Empty);
+    }
+
     // FastAPI HTTPException 응답은 보통 { "detail": "문자열" }. 없으면 UnityWebRequest.error로 폴백.
     private static string ExtractErrorMessage(UnityWebRequest request, string fallbackPrefix)
     {
         var body = request.downloadHandler?.text;
         if (!string.IsNullOrWhiteSpace(body))
         {
-            var detail = UnityEngine.JsonUtility.FromJson<ErrorDetailResponse>(body);
+            var detail = JsonUtility.FromJson<ErrorDetailResponse>(body);
             if (!string.IsNullOrWhiteSpace(detail?.detail))
             {
                 return detail.detail;

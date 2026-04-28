@@ -13,7 +13,7 @@ using UnityEngine.UIElements;
 public class FinUsDashboardUiController : MonoBehaviour
 {
     [SerializeField] private string apiBaseUrl = "http://localhost:8000";
-    private FinUsApiClient apiClient;
+    private ApiClient apiClient;
 
     private TextField stockInput;
     private DropdownField providerDropdown;
@@ -54,7 +54,7 @@ public class FinUsDashboardUiController : MonoBehaviour
 
         providerDropdown.choices = providerLabels;
         providerDropdown.index = 0;
-        apiClient = new FinUsApiClient(apiBaseUrl);
+        apiClient = new ApiClient(apiBaseUrl);
 
         dataOnlyButton.clicked += OnDataOnlyClicked;
         analyzeButton.clicked += OnAnalyzeClicked;
@@ -117,7 +117,7 @@ public class FinUsDashboardUiController : MonoBehaviour
             yield break;
         }
 
-        var parsedTrend = FinUsTrendParser.Parse(result.trendRaw); // 원문 문자열 → TrendItem 리스트
+        var parsedTrend = TrendParser.Parse(result.trendRaw); // 원문 문자열 → TrendItem 리스트
         RenderStockHeader(stock, parsedTrend.LastOrDefault());
         decisionLabel.text = "결정: (DATA ONLY 모드)";
         decisionLabel.style.color = new StyleColor(new Color(0.2f, 0.2f, 0.2f));
@@ -146,7 +146,7 @@ public class FinUsDashboardUiController : MonoBehaviour
             yield break;
         }
 
-        var trend = FinUsTrendParser.Parse(report.trading_trend);
+        var trend = TrendParser.Parse(report.trading_trend);
         RenderStockHeader(stock, trend.LastOrDefault());
 
         decisionLabel.text = $"결정: {report.details.decision}";
