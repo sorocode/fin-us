@@ -50,5 +50,7 @@ backend-go/bin/
 .DS_Store
 Thumbs.db
 
-# Gemini Specific
+# coding agent specific
 .gemini/
+.claude/
+.cursor/
