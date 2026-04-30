@@ -1,0 +1,55 @@
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+from mcp import StdioServerParameters
+
+_FIN_US_ROOT = Path(__file__).resolve().parent.parent
+_BACKEND_ENV = _FIN_US_ROOT / "backend" / ".env"
+
+load_dotenv(_BACKEND_ENV)
+load_dotenv()
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+OPENAI_CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-5.4-mini")
+ANTHROPIC_CHAT_MODEL = os.getenv("ANTHROPIC_CHAT_MODEL", "claude-sonnet-4-20250514")
+
+NAT_BASE_URL = os.environ.get("NAT_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+NAT_CHAT_MODEL = os.environ.get(
+    "NAT_CHAT_MODEL",
+    os.environ.get("OPENAI_CHAT_MODEL", "gpt-5.4-mini"),
+)
+
+OLLAMA_API_KEY = os.environ.get("OLLAMA_API_KEY", "ollama")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3.5:9b")
+
+
+def get_ollama_openai_base_url() -> str:
+    """OpenAI-compatible Ollama /v1. In Docker, 127.0.0.1 is the container — default to host gateway."""
+    raw = (os.environ.get("OLLAMA_OPENAI_BASE_URL") or "").strip()
+    if not raw:
+        raw = (
+            "http://host.docker.internal:11434/v1"
+            if Path("/.dockerenv").exists()
+            else "http://127.0.0.1:11434/v1"
+        )
+    base = raw.rstrip("/")
+    if base.endswith("/v1"):
+        return base
+    return f"{base}/v1"
+
+
+_NEWS_MCP_DIR = (_FIN_US_ROOT / "mcp-news").resolve()
+_TRADING_MCP_DIR = (_FIN_US_ROOT / "mcp-trading").resolve()
+
+
+def _stdio_server_params(mcp_dir: Path) -> StdioServerParameters:
+    return StdioServerParameters(
+        command="node",
+        args=[str(mcp_dir / "index.js")],
+        cwd=str(mcp_dir),
+    )
+
+
+NEWS_MCP_PARAMS = _stdio_server_params(_NEWS_MCP_DIR)
+TRADING_MCP_PARAMS = _stdio_server_params(_TRADING_MCP_DIR)
