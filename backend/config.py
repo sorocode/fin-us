@@ -1,10 +1,7 @@
 import os
-import logging
 from pathlib import Path
 from dotenv import load_dotenv
 from mcp import StdioServerParameters
-
-logger = logging.getLogger(__name__)
 
 _FIN_US_ROOT = Path(__file__).resolve().parent.parent
 _BACKEND_ENV = _FIN_US_ROOT / "backend" / ".env"
