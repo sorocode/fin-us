@@ -82,7 +82,7 @@ cd mcp-trading && npm install
 # 프로젝트 루트 디렉토리에서 실행하는 것을 권장합니다.
 pip install -r backend/requirements.txt
 uvicorn backend.main:app --host 0.0.0.0 --port 8787
-```
+
 # 3. Frontend 실행
 cd frontend-react
 npm install
