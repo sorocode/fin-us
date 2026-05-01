@@ -1,7 +1,7 @@
 <ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
     <ui:VisualElement name="source-news-panel" style="flex-grow: 1;">
         <ui:Label text="source-news-title-label" name="source-news-title-label" style="-unity-text-generator: advanced; -unity-text-auto-size: best-fit 10px 20px;"/>
-        <ui:Label text="source-news-list" name="source-news-list" style="-unity-text-generator: advanced; -unity-text-auto-size: best-fit 10px 20px;"/>
+        <ui:ListView name="source-news-list" style="flex-grow: 1; min-height: 120px;" />
     </ui:VisualElement>
     <ui:VisualElement name="trend-panel" style="flex-grow: 1;">
         <ui:Label text="trend-title-label" name="trend-title-label" style="-unity-text-generator: advanced; -unity-text-auto-size: best-fit 10px 20px;"/>

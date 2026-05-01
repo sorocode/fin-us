@@ -1,0 +1,381 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UIElements;
+
+[RequireComponent(typeof(UIDocument))]
+public class DashboardUiController : MonoBehaviour
+{
+    [SerializeField] private string apiBaseUrl = "http://localhost:8000";
+
+    private ApiClient apiClient;
+
+    private TextField stockInput;
+    private DropdownField providerSelect;
+    private Button fetchNewsButton;
+    private Button fetchTrendButton;
+    private Button fetchBalanceButton;
+    private Button analyzeButton;
+
+    private VisualElement statusBar;
+    private Label statusLabel;
+    private Label errorLabel;
+
+    private VisualElement summaryCard;
+    private Label summaryLabel;
+    private Label decisionBadge;
+    private Label confidenceTextLabel;
+    private VisualElement reasonPanel;
+    private Label reasonLabel;
+    private VisualElement trendPanel;
+    private Label trendTextLabel;
+    private TextField balanceReportField;
+
+    private ListView sourceNewsListView;
+    private Label sourceNewsLabelFallback;
+    private readonly List<string> sourceNewsItems = new List<string>();
+
+    private readonly List<string> defaultProviders = new List<string> { "openai", "anthropic" };
+
+    private void OnEnable()
+    {
+        var root = GetComponent<UIDocument>().rootVisualElement;
+
+        stockInput = root.Q<TextField>("stock-input");
+        providerSelect = root.Q<DropdownField>("provider-select");
+        fetchNewsButton = root.Q<Button>("fetch-news-button");
+        fetchTrendButton = root.Q<Button>("fetch-trend-button");
+        fetchBalanceButton = root.Q<Button>("fetch-balance-button");
+        analyzeButton = root.Q<Button>("analyze-button");
+
+        statusBar = root.Q<VisualElement>("status-bar");
+        statusLabel = root.Q<Label>("status-label");
+        errorLabel = root.Q<Label>("error-label");
+
+        summaryCard = root.Q<VisualElement>("summary-card");
+        summaryLabel = root.Q<Label>("summary-label");
+        decisionBadge = root.Q<Label>("decision-badge");
+        confidenceTextLabel = root.Q<Label>("confidence-text-label");
+        reasonPanel = root.Q<VisualElement>("reason-panel");
+        reasonLabel = root.Q<Label>("reason-label");
+        trendPanel = root.Q<VisualElement>("trend-panel");
+        trendTextLabel = root.Q<Label>("trend-text-label");
+        balanceReportField = root.Q<TextField>("balance-report-field");
+
+        sourceNewsListView = root.Q<ListView>("source-news-list");
+        sourceNewsLabelFallback = root.Q<Label>("source-news-list");
+        ConfigureNewsListView();
+
+        if (providerSelect != null)
+        {
+            if (providerSelect.choices == null || providerSelect.choices.Count == 0)
+            {
+                providerSelect.choices = defaultProviders;
+            }
+
+            providerSelect.index = providerSelect.choices.IndexOf("openai");
+            if (providerSelect.index < 0)
+            {
+                providerSelect.index = 0;
+            }
+        }
+
+        if (balanceReportField != null)
+        {
+            balanceReportField.multiline = true;
+            balanceReportField.isReadOnly = true;
+        }
+
+        apiClient = new ApiClient(apiBaseUrl);
+
+        RegisterButtonCallbacks();
+        SetIdleState();
+    }
+
+    private void OnDisable()
+    {
+        UnregisterButtonCallbacks();
+    }
+
+    private void RegisterButtonCallbacks()
+    {
+        if (fetchNewsButton != null) fetchNewsButton.clicked += OnFetchNewsClicked;
+        if (fetchTrendButton != null) fetchTrendButton.clicked += OnFetchTrendClicked;
+        if (fetchBalanceButton != null) fetchBalanceButton.clicked += OnFetchBalanceClicked;
+        if (analyzeButton != null) analyzeButton.clicked += OnAnalyzeClicked;
+    }
+
+    private void UnregisterButtonCallbacks()
+    {
+        if (fetchNewsButton != null) fetchNewsButton.clicked -= OnFetchNewsClicked;
+        if (fetchTrendButton != null) fetchTrendButton.clicked -= OnFetchTrendClicked;
+        if (fetchBalanceButton != null) fetchBalanceButton.clicked -= OnFetchBalanceClicked;
+        if (analyzeButton != null) analyzeButton.clicked -= OnAnalyzeClicked;
+    }
+
+    private void ConfigureNewsListView()
+    {
+        if (sourceNewsListView == null)
+        {
+            return;
+        }
+
+        sourceNewsListView.makeItem = () => new Label();
+        sourceNewsListView.bindItem = (element, index) =>
+        {
+            if (element is Label label)
+            {
+                label.text = sourceNewsItems[index];
+            }
+        };
+        sourceNewsListView.itemsSource = sourceNewsItems;
+        sourceNewsListView.Rebuild();
+    }
+
+    private void OnFetchNewsClicked()
+    {
+        var stock = GetStockOrNull();
+        if (stock == null)
+        {
+            return;
+        }
+
+        StartCoroutine(FetchNewsRoutine(stock));
+    }
+
+    private void OnFetchTrendClicked()
+    {
+        var stock = GetStockOrNull();
+        if (stock == null)
+        {
+            return;
+        }
+
+        StartCoroutine(FetchTrendRoutine(stock));
+    }
+
+    private void OnFetchBalanceClicked()
+    {
+        StartCoroutine(FetchBalanceRoutine());
+    }
+
+    private void OnAnalyzeClicked()
+    {
+        var stock = GetStockOrNull();
+        if (stock == null)
+        {
+            return;
+        }
+
+        var provider = "openai";
+        if (providerSelect != null && providerSelect.choices != null && providerSelect.choices.Count > 0)
+        {
+            var index = Mathf.Clamp(providerSelect.index, 0, providerSelect.choices.Count - 1);
+            provider = providerSelect.choices[index];
+        }
+
+        StartCoroutine(FetchAnalyzeRoutine(stock, provider));
+    }
+
+    private string GetStockOrNull()
+    {
+        var stock = stockInput?.value?.Trim();
+        if (!string.IsNullOrWhiteSpace(stock))
+        {
+            return stock;
+        }
+
+        SetError("종목(stock)을 입력해 주세요.");
+        return null;
+    }
+
+    private IEnumerator FetchNewsRoutine(string stock)
+    {
+        SetLoading("뉴스를 조회 중입니다...");
+        string[] news = null;
+        string error = null;
+
+        yield return apiClient.FetchNews(
+            stock,
+            data => news = data,
+            message => error = message);
+
+        if (!string.IsNullOrEmpty(error))
+        {
+            SetError(error);
+            yield break;
+        }
+
+        SetNewsItems(news ?? new string[0]);
+        SetSuccess("뉴스 조회 완료");
+    }
+
+    private IEnumerator FetchTrendRoutine(string stock)
+    {
+        SetLoading("트렌드를 조회 중입니다...");
+        string trend = null;
+        string error = null;
+
+        yield return apiClient.FetchTrend(
+            stock,
+            data => trend = data,
+            message => error = message);
+
+        if (!string.IsNullOrEmpty(error))
+        {
+            SetError(error);
+            yield break;
+        }
+
+        if (trendTextLabel != null)
+        {
+            trendTextLabel.text = string.IsNullOrWhiteSpace(trend) ? "-" : trend;
+        }
+
+        SetSuccess("트렌드 조회 완료");
+    }
+
+    private IEnumerator FetchBalanceRoutine()
+    {
+        SetLoading("잔고 리포트를 조회 중입니다...");
+        string report = null;
+        string error = null;
+
+        yield return apiClient.FetchBalance(
+            data => report = data,
+            message => error = message);
+
+        if (!string.IsNullOrEmpty(error))
+        {
+            SetError(error);
+            yield break;
+        }
+
+        if (balanceReportField != null)
+        {
+            balanceReportField.value = report ?? string.Empty;
+        }
+
+        SetSuccess("잔고 리포트 조회 완료");
+    }
+
+    private IEnumerator FetchAnalyzeRoutine(string stock, string provider)
+    {
+        SetLoading("AI 분석을 실행 중입니다...");
+        AnalyzeData analyze = null;
+        string error = null;
+
+        yield return apiClient.FetchAnalysis(
+            stock,
+            provider,
+            data => analyze = data,
+            message => error = message);
+
+        if (!string.IsNullOrEmpty(error))
+        {
+            SetError(error);
+            yield break;
+        }
+
+        if (analyze == null)
+        {
+            SetError("분석 결과가 비어 있습니다.");
+            yield break;
+        }
+
+        ApplyAnalyzeResult(analyze);
+        SetSuccess($"분석 완료 ({provider})");
+    }
+
+    private void ApplyAnalyzeResult(AnalyzeData analyze)
+    {
+        if (summaryCard != null) summaryCard.style.display = DisplayStyle.Flex;
+        if (reasonPanel != null) reasonPanel.style.display = DisplayStyle.Flex;
+        if (trendPanel != null) trendPanel.style.display = DisplayStyle.Flex;
+
+        if (summaryLabel != null)
+        {
+            summaryLabel.text = string.IsNullOrWhiteSpace(analyze.summary) ? "-" : analyze.summary;
+        }
+
+        var details = analyze.details;
+        if (decisionBadge != null)
+        {
+            decisionBadge.text = details == null || string.IsNullOrWhiteSpace(details.decision) ? "-" : details.decision;
+        }
+
+        var confidence = details == null ? 0f : Mathf.Clamp01(details.confidence_score);
+        if (confidenceTextLabel != null)
+        {
+            confidenceTextLabel.text = $"{confidence:P0}";
+        }
+
+        if (reasonLabel != null)
+        {
+            reasonLabel.text = details == null || string.IsNullOrWhiteSpace(details.reason) ? "-" : details.reason;
+        }
+
+        if (trendTextLabel != null)
+        {
+            trendTextLabel.text = string.IsNullOrWhiteSpace(analyze.trading_trend) ? "-" : analyze.trading_trend;
+        }
+
+        SetNewsItems(analyze.source_news ?? new string[0]);
+    }
+
+    private void SetNewsItems(IReadOnlyList<string> items)
+    {
+        sourceNewsItems.Clear();
+        for (var i = 0; i < items.Count; i++)
+        {
+            sourceNewsItems.Add(items[i]);
+        }
+
+        if (sourceNewsListView != null)
+        {
+            sourceNewsListView.Rebuild();
+        }
+
+        if (sourceNewsLabelFallback != null)
+        {
+            sourceNewsLabelFallback.text = sourceNewsItems.Count == 0 ? "-" : string.Join("\n", sourceNewsItems);
+        }
+    }
+
+    private void SetIdleState()
+    {
+        if (statusLabel != null) statusLabel.text = "대기 중";
+        if (errorLabel != null) errorLabel.text = string.Empty;
+        SetButtonsEnabled(true);
+    }
+
+    private void SetLoading(string message)
+    {
+        if (statusLabel != null) statusLabel.text = message;
+        if (errorLabel != null) errorLabel.text = string.Empty;
+        SetButtonsEnabled(false);
+    }
+
+    private void SetSuccess(string message)
+    {
+        if (statusLabel != null) statusLabel.text = message;
+        if (errorLabel != null) errorLabel.text = string.Empty;
+        SetButtonsEnabled(true);
+    }
+
+    private void SetError(string message)
+    {
+        if (statusLabel != null) statusLabel.text = "error";
+        if (errorLabel != null) errorLabel.text = message;
+        SetButtonsEnabled(true);
+    }
+
+    private void SetButtonsEnabled(bool enabled)
+    {
+        fetchNewsButton?.SetEnabled(enabled);
+        fetchTrendButton?.SetEnabled(enabled);
+        fetchBalanceButton?.SetEnabled(enabled);
+        analyzeButton?.SetEnabled(enabled);
+        if (statusBar != null) statusBar.SetEnabled(true);
+    }
+}

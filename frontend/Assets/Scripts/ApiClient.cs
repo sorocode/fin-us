@@ -93,6 +93,50 @@ public class ApiClient
         onSuccess?.Invoke(parsed.data.report ?? string.Empty);
     }
 
+    public IEnumerator FetchNews(string stock, Action<string[]> onSuccess, Action<string> onError)
+    {
+        var newsUrl = $"{apiBaseUrl}/api/v1/news?stock={UnityWebRequest.EscapeURL(stock)}";
+        using var req = UnityWebRequest.Get(newsUrl);
+        yield return req.SendWebRequest();
+
+        if (req.result != UnityWebRequest.Result.Success)
+        {
+            onError?.Invoke(ExtractErrorMessage(req, "뉴스 조회 실패"));
+            yield break;
+        }
+
+        var parsed = JsonUtility.FromJson<NewsApiResponse>(req.downloadHandler.text);
+        if (parsed == null || parsed.status != "success" || parsed.data == null)
+        {
+            onError?.Invoke("뉴스 데이터를 파싱하지 못했습니다.");
+            yield break;
+        }
+
+        onSuccess?.Invoke(parsed.data.news ?? new string[0]);
+    }
+
+    public IEnumerator FetchTrend(string stock, Action<string> onSuccess, Action<string> onError)
+    {
+        var trendUrl = $"{apiBaseUrl}/api/v1/trading/trend?stock={UnityWebRequest.EscapeURL(stock)}";
+        using var req = UnityWebRequest.Get(trendUrl);
+        yield return req.SendWebRequest();
+
+        if (req.result != UnityWebRequest.Result.Success)
+        {
+            onError?.Invoke(ExtractErrorMessage(req, "트렌드 조회 실패"));
+            yield break;
+        }
+
+        var parsed = JsonUtility.FromJson<TrendApiResponse>(req.downloadHandler.text);
+        if (parsed == null || parsed.status != "success" || parsed.data == null)
+        {
+            onError?.Invoke("트렌드 데이터를 파싱하지 못했습니다.");
+            yield break;
+        }
+
+        onSuccess?.Invoke(parsed.data.trend ?? string.Empty);
+    }
+
     // FastAPI HTTPException 응답은 보통 { "detail": "문자열" }. 없으면 UnityWebRequest.error로 폴백.
     private static string ExtractErrorMessage(UnityWebRequest request, string fallbackPrefix)
     {
