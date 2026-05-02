@@ -1,14 +1,14 @@
 <ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
     <ui:VisualElement name="source-news-panel" style="flex-grow: 1;">
-        <ui:Label text="source-news-title-label" name="source-news-title-label" style="-unity-text-generator: advanced; -unity-text-auto-size: none; font-size: 20px; white-space: normal;"/>
-        <ui:ListView name="source-news-list" style="flex-grow: 1; min-height: 120px; font-size: 20px;"/>
+        <ui:Label text="뉴스" name="source-news-title-label" style="-unity-text-generator: advanced; -unity-text-auto-size: none; font-size: 24px; white-space: normal; -unity-font-style: bold;"/>
+        <ui:ListView name="source-news-list" style="flex-grow: 1; min-height: 120px; font-size: 20px; flex-wrap: wrap;"/>
     </ui:VisualElement>
     <ui:VisualElement name="trend-panel" style="flex-grow: 1; font-size: 20px;">
-        <ui:Label text="trend-title-label" name="trend-title-label" style="-unity-text-generator: advanced; -unity-text-auto-size: none; font-size: 20px; white-space: normal;"/>
+        <ui:Label text="트렌드" name="trend-title-label" style="-unity-text-generator: advanced; -unity-text-auto-size: none; font-size: 24px; white-space: normal; -unity-font-style: bold;"/>
         <ui:Label text="trend-text-label" name="trend-text-label" style="-unity-text-generator: advanced; -unity-text-auto-size: none; white-space: normal;"/>
     </ui:VisualElement>
     <ui:VisualElement name="balance-panel" style="flex-grow: 1;">
-        <ui:Label text="balance-title-label" name="balance-title-label" style="-unity-text-generator: advanced; -unity-text-auto-size: none; font-size: 20px; white-space: normal;"/>
+        <ui:Label text="밸런스" name="balance-title-label" style="-unity-text-generator: advanced; -unity-text-auto-size: none; font-size: 24px; white-space: normal; -unity-font-style: bold;"/>
         <ui:TextField label="balance-report-field" placeholder-text="filler text" name="balance-report-field" readonly="true" style="-unity-text-auto-size: none; -unity-text-generator: advanced; margin-left: 2px; padding-left: 0; font-size: 20px; white-space: normal;"/>
     </ui:VisualElement>
 </ui:UXML>

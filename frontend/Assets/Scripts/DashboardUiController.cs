@@ -297,6 +297,8 @@ public class DashboardUiController : MonoBehaviour
 
     private void ApplyAnalyzeResult(AnalyzeData analyze)
     {
+        analyze = RecoverAnalyzeResult(analyze);
+
         var hasSummary = !string.IsNullOrWhiteSpace(analyze.summary);
         SetSectionVisible(summaryCard, hasSummary);
 
@@ -334,7 +336,110 @@ public class DashboardUiController : MonoBehaviour
             trendTextLabel.text = analyze.trading_trend ?? string.Empty;
         }
 
-        SetNewsItems(analyze.source_news ?? new string[0]);
+        SetNewsItems(FilterSummaryDuplicates(analyze.source_news, analyze.summary));
+    }
+
+    private static AnalyzeData RecoverAnalyzeResult(AnalyzeData analyze)
+    {
+        if (analyze == null)
+        {
+            return null;
+        }
+
+        var recovered = TryParseAnalyzeJson(analyze.summary);
+        return recovered ?? analyze;
+    }
+
+    private static AnalyzeData TryParseAnalyzeJson(string rawText)
+    {
+        if (string.IsNullOrWhiteSpace(rawText)
+            || !rawText.Contains("\"summary\"")
+            || !rawText.Contains("\"details\""))
+        {
+            return null;
+        }
+
+        for (var i = 0; i < rawText.Length; i++)
+        {
+            if (rawText[i] != '{')
+            {
+                continue;
+            }
+
+            var candidate = ExtractJsonObject(rawText, i);
+            if (string.IsNullOrWhiteSpace(candidate)
+                || !candidate.Contains("\"summary\"")
+                || !candidate.Contains("\"details\""))
+            {
+                continue;
+            }
+
+            AnalyzeData parsed = null;
+            try
+            {
+                parsed = JsonUtility.FromJson<AnalyzeData>(candidate);
+            }
+            catch (System.ArgumentException)
+            {
+                continue;
+            }
+
+            if (parsed != null && (parsed.details != null || !string.IsNullOrWhiteSpace(parsed.summary)))
+            {
+                return parsed;
+            }
+        }
+
+        return null;
+    }
+
+    private static string ExtractJsonObject(string text, int startIndex)
+    {
+        var depth = 0;
+        var inString = false;
+        var escaping = false;
+
+        for (var i = startIndex; i < text.Length; i++)
+        {
+            var ch = text[i];
+
+            if (inString)
+            {
+                if (escaping)
+                {
+                    escaping = false;
+                }
+                else if (ch == '\\')
+                {
+                    escaping = true;
+                }
+                else if (ch == '"')
+                {
+                    inString = false;
+                }
+
+                continue;
+            }
+
+            if (ch == '"')
+            {
+                inString = true;
+            }
+            else if (ch == '{')
+            {
+                depth++;
+            }
+            else if (ch == '}')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    return text.Substring(startIndex, i - startIndex + 1);
+                }
+            }
+        }
+
+        return null;
     }
 
     private void SetNewsItems(IReadOnlyList<string> items)
@@ -356,6 +461,55 @@ public class DashboardUiController : MonoBehaviour
         {
             sourceNewsLabelFallback.text = sourceNewsItems.Count == 0 ? string.Empty : string.Join("\n", sourceNewsItems);
         }
+    }
+
+    private static IReadOnlyList<string> FilterSummaryDuplicates(IReadOnlyList<string> items, string summary)
+    {
+        if (items == null || items.Count == 0)
+        {
+            return new string[0];
+        }
+
+        var filteredItems = new List<string>();
+        var normalizedSummary = NormalizeForComparison(summary);
+
+        for (var i = 0; i < items.Count; i++)
+        {
+            var item = items[i];
+            if (string.IsNullOrWhiteSpace(item))
+            {
+                continue;
+            }
+
+            var normalizedItem = NormalizeForComparison(item);
+            if (IsSummaryDuplicate(normalizedItem, normalizedSummary))
+            {
+                continue;
+            }
+
+            filteredItems.Add(item);
+        }
+
+        return filteredItems;
+    }
+
+    private static bool IsSummaryDuplicate(string normalizedItem, string normalizedSummary)
+    {
+        if (string.IsNullOrEmpty(normalizedItem) || string.IsNullOrEmpty(normalizedSummary))
+        {
+            return false;
+        }
+
+        return normalizedItem == normalizedSummary
+            || normalizedSummary.Contains(normalizedItem)
+            || normalizedItem.Contains(normalizedSummary);
+    }
+
+    private static string NormalizeForComparison(string value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : string.Join(" ", value.Split()).Trim();
     }
 
     private void SetIdleState()
