@@ -22,12 +22,15 @@ public class DashboardUiController : MonoBehaviour
     private Label errorLabel;
 
     private VisualElement summaryCard;
+    private VisualElement decisionCard;
     private Label summaryLabel;
     private Label decisionBadge;
     private Label confidenceTextLabel;
     private VisualElement reasonPanel;
     private Label reasonLabel;
     private VisualElement trendPanel;
+    private VisualElement sourceNewsPanel;
+    private VisualElement balancePanel;
     private Label trendTextLabel;
     private TextField balanceReportField;
 
@@ -53,12 +56,15 @@ public class DashboardUiController : MonoBehaviour
         errorLabel = root.Q<Label>("error-label");
 
         summaryCard = root.Q<VisualElement>("summary-card");
+        decisionCard = root.Q<VisualElement>("decision-card");
         summaryLabel = root.Q<Label>("summary-label");
         decisionBadge = root.Q<Label>("decision-badge");
         confidenceTextLabel = root.Q<Label>("confidence-text-label");
         reasonPanel = root.Q<VisualElement>("reason-panel");
         reasonLabel = root.Q<Label>("reason-label");
         trendPanel = root.Q<VisualElement>("trend-panel");
+        sourceNewsPanel = root.Q<VisualElement>("source-news-panel");
+        balancePanel = root.Q<VisualElement>("balance-panel");
         trendTextLabel = root.Q<Label>("trend-text-label");
         balanceReportField = root.Q<TextField>("balance-report-field");
 
@@ -229,8 +235,9 @@ public class DashboardUiController : MonoBehaviour
 
         if (trendTextLabel != null)
         {
-            trendTextLabel.text = string.IsNullOrWhiteSpace(trend) ? "-" : trend;
+            trendTextLabel.text = trend ?? string.Empty;
         }
+        SetSectionVisible(trendPanel, !string.IsNullOrWhiteSpace(trend));
 
         SetSuccess("트렌드 조회 완료");
     }
@@ -255,6 +262,7 @@ public class DashboardUiController : MonoBehaviour
         {
             balanceReportField.value = report ?? string.Empty;
         }
+        SetSectionVisible(balancePanel, !string.IsNullOrWhiteSpace(report));
 
         SetSuccess("잔고 리포트 조회 완료");
     }
@@ -289,19 +297,23 @@ public class DashboardUiController : MonoBehaviour
 
     private void ApplyAnalyzeResult(AnalyzeData analyze)
     {
-        if (summaryCard != null) summaryCard.style.display = DisplayStyle.Flex;
-        if (reasonPanel != null) reasonPanel.style.display = DisplayStyle.Flex;
-        if (trendPanel != null) trendPanel.style.display = DisplayStyle.Flex;
+        var hasSummary = !string.IsNullOrWhiteSpace(analyze.summary);
+        SetSectionVisible(summaryCard, hasSummary);
 
         if (summaryLabel != null)
         {
-            summaryLabel.text = string.IsNullOrWhiteSpace(analyze.summary) ? "-" : analyze.summary;
+            summaryLabel.text = analyze.summary ?? string.Empty;
         }
 
         var details = analyze.details;
+        var hasDecision = details != null && !string.IsNullOrWhiteSpace(details.decision);
+        var hasReason = details != null && !string.IsNullOrWhiteSpace(details.reason);
+        SetSectionVisible(decisionCard, hasDecision || details != null);
+        SetSectionVisible(reasonPanel, hasReason);
+
         if (decisionBadge != null)
         {
-            decisionBadge.text = details == null || string.IsNullOrWhiteSpace(details.decision) ? "-" : details.decision;
+            decisionBadge.text = hasDecision ? details.decision : string.Empty;
         }
 
         var confidence = details == null ? 0f : Mathf.Clamp01(details.confidence_score);
@@ -312,12 +324,14 @@ public class DashboardUiController : MonoBehaviour
 
         if (reasonLabel != null)
         {
-            reasonLabel.text = details == null || string.IsNullOrWhiteSpace(details.reason) ? "-" : details.reason;
+            reasonLabel.text = hasReason ? details.reason : string.Empty;
         }
 
+        var hasTrend = !string.IsNullOrWhiteSpace(analyze.trading_trend);
+        SetSectionVisible(trendPanel, hasTrend);
         if (trendTextLabel != null)
         {
-            trendTextLabel.text = string.IsNullOrWhiteSpace(analyze.trading_trend) ? "-" : analyze.trading_trend;
+            trendTextLabel.text = analyze.trading_trend ?? string.Empty;
         }
 
         SetNewsItems(analyze.source_news ?? new string[0]);
@@ -336,9 +350,11 @@ public class DashboardUiController : MonoBehaviour
             sourceNewsListView.Rebuild();
         }
 
+        SetSectionVisible(sourceNewsPanel, sourceNewsItems.Count > 0);
+
         if (sourceNewsLabelFallback != null)
         {
-            sourceNewsLabelFallback.text = sourceNewsItems.Count == 0 ? "-" : string.Join("\n", sourceNewsItems);
+            sourceNewsLabelFallback.text = sourceNewsItems.Count == 0 ? string.Empty : string.Join("\n", sourceNewsItems);
         }
     }
 
@@ -346,6 +362,7 @@ public class DashboardUiController : MonoBehaviour
     {
         if (statusLabel != null) statusLabel.text = "대기 중";
         if (errorLabel != null) errorLabel.text = string.Empty;
+        HideResultSections();
         SetButtonsEnabled(true);
     }
 
@@ -353,6 +370,7 @@ public class DashboardUiController : MonoBehaviour
     {
         if (statusLabel != null) statusLabel.text = message;
         if (errorLabel != null) errorLabel.text = string.Empty;
+        HideResultSections();
         SetButtonsEnabled(false);
     }
 
@@ -377,5 +395,25 @@ public class DashboardUiController : MonoBehaviour
         fetchBalanceButton?.SetEnabled(enabled);
         analyzeButton?.SetEnabled(enabled);
         if (statusBar != null) statusBar.SetEnabled(true);
+    }
+
+    private void HideResultSections()
+    {
+        SetSectionVisible(summaryCard, false);
+        SetSectionVisible(decisionCard, false);
+        SetSectionVisible(reasonPanel, false);
+        SetSectionVisible(trendPanel, false);
+        SetSectionVisible(sourceNewsPanel, false);
+        SetSectionVisible(balancePanel, false);
+    }
+
+    private static void SetSectionVisible(VisualElement section, bool visible)
+    {
+        if (section == null)
+        {
+            return;
+        }
+
+        section.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
     }
 }
