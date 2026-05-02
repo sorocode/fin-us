@@ -10,6 +10,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from nat_finus_nat import branch  # noqa: F401
-from nat_finus_nat import finus_api  # noqa: F401
-from nat_finus_nat import stub  # noqa: F401
+"""Fin-Us NAT components.
+
+Loads ``finus_nat/.env`` so ``MEM0_API_KEY`` (Mem0 Platform) is available when the NAT CLI
+cwd is not ``finus_nat/``. Matches NeMo examples: credentials only via env, not YAML.
+"""
+
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# register.py -> nat_finus_nat/ -> src/ -> finus_nat/
+_FINUS_NAT_ENV = Path(__file__).resolve().parents[2] / ".env"
+if _FINUS_NAT_ENV.is_file():
+    load_dotenv(_FINUS_NAT_ENV, override=False)
+
+from nat_finus_nat import branch  # noqa: E402, F401
+from nat_finus_nat import finus_api  # noqa: E402, F401
+from nat_finus_nat import stub  # noqa: E402, F401

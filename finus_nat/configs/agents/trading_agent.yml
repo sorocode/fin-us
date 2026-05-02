@@ -1,14 +1,34 @@
 base: ../common.yml
 
+llms:
+  trading_openai_llm:
+    _type: openai
+    api_key: ${OPENAI_API_KEY}
+    base_url: ${OPENAI_API_BASE_URL:-${OPENAI_BASE_URL:-https://api.openai.com/v1}}
+    model_name: ${TRADING_OPENAI_CHAT_MODEL:-gpt-5.4-mini}
+
+
+memory:
+  mem0_memory:
+    _type: mem0_memory
+    host: ${FINUS_MEM0_HOST:-http://localhost:8888}
+    org_id: ${FINUS_MEM0_ORG_ID:-selfhost-org}
+    project_id: ${FINUS_MEM0_PROJECT_ID:-selfhost-project}
+    # API credentials are loaded from environment variables: MEM0_API_KEY
+
 functions:
-  trading_agent:
+  # Kis Trading MCP — trading 에이전트 전용 (공용 common.yml 에 두지 않음)
+  kis-trading-mcp-tool:
+    _type: finus_account_balance
+    mcp_transport: sse
+    mcp_url: ${FINUS_KIS_TRADING_MCP_URL:-http://kis-trading-mcp:3300/sse}
+    trading_tool_name: ${FINUS_KIS_TRADING_TOOL_NAME:-domestic_stock}
+
+  trading_agent_react:
     _type: react_agent
-    llm_name: openai_cloud_llm
+    llm_name: trading_openai_llm
     tool_names:
       - kis-trading-mcp-tool
-      - mcp-news-get-market-news
-      - mcp-news-get-investor-trading
-      - mcp-news-get-research-reports
     verbose: true
     include_tool_input_schema_in_tool_description: true
     use_native_tool_calling: false
@@ -18,22 +38,21 @@ functions:
     pass_tool_call_errors_to_agent: true
     accept_direct_answer_without_react_format: false
     additional_instructions: |
-      주식 주문과 주식 시세를 조회하는 에이전트 입니다. 
-      === 에이전트 요약 ===
-      역할: 자산 운용 및 매매 관리자
-      목표: Fin-Us MCP 도구로 계좌·뉴스·수급·리서치를 조회하고, 리스크를 고려한 매매 관점(BUY/SELL/HOLD)과 배분 아이디어를 제안합니다.
-      체크리스트:
-      - 자산의 30% 이상이 한 종목에 몰리지 않도록 리스크를 관리할 것.
-      - 보유 비중이 10% 이상인 종목의 수익률이 -10% 미만이면 'SELL' 신호와 함께 손절 검토를 보고할 것.
-      - 최종 결정에는 반드시 '결정 이유(Reason)'와 조회한 데이터 근거를 포함할 것.
+      주식 주문과 주식 시세를 조회하는 에이전트 입니다.
+      Fin-Us MCP 도구로 계좌·뉴스·수급·리서치를 조회하고, 리스크를 고려한 매매 관점(BUY/SELL/HOLD)과 배분 아이디어를 제안합니다.
 
       === 동작 지시 ===
-      사용 가능한 툴 이름(Action 줄에 그대로 사용): `kis-trading-mcp-tool`, `mcp-news-get-market-news`, `mcp-news-get-investor-trading`, `mcp-news-get-research-reports`.
-      - `mcp-news-get-market-news(stock_name)` / `mcp-news-get-investor-trading(stock_name)`: Fin-Us `mcp-news`(stdio). 한글 종목명을 넣으세요.
-      - `mcp-news-get-research-reports(category, query, limit?, chars_per_report?, max_text_reports?)`: 리서치 검색→PDF 저장→텍스트 추출→본문 인라인 반환을 한 번에 수행합니다. category는 company/industry/market_info/invest/economy/debenture(한국어 alias 허용).
-      - `kis-trading-mcp-tool(placeholder)`: Kis Trading MCP(SSE). 인자는 없거나 placeholder 한 개.
+      - 가격 조회, 보유/계좌 조회, 주문 가능 여부 확인, 주문/정정/취소 등 거래 관련 작업은 `kis-trading-mcp-tool`을 우선 사용하고, 요청 의도에 맞게 입력값을 자율적으로 구성하십시오.
       - 도구가 오류 JSON을 반환하면 내용을 사용자에게 설명하고, 가능하면 다른 도구로 보완하십시오.
       - 최종 답변은 조회 결과가 드러나는 한국어 문장으로 마무리하십시오.
+
+  trading_agent:
+    _type: auto_memory_agent
+    inner_agent_name: trading_agent_react
+    memory_name: mem0_memory
+    llm_name: trading_openai_llm
+    verbose: true
+    description: "KIS MCP를 사용하여 거래를 구현합니다"
 
   trading_branch_agent:
     _type: fe_branch

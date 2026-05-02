@@ -1,9 +1,19 @@
 base: trading_agent.yml
 
+llms:
+  # Optional monitoring-specific OpenAI model config (uncomment when needed).
+  monitoring_openai_llm:
+    _type: openai
+    api_key: ${OPENAI_API_KEY}
+    base_url: ${OPENAI_API_BASE_URL:-${OPENAI_BASE_URL:-https://api.openai.com/v1}}
+    model_name: ${MONITORING_OPENAI_CHAT_MODEL:-gpt-5.4-mini}
+# 모니터링 엔진으로 호춟받아서 사용자에게 보고하는 에이전트 입니다.
 functions:
   monitoring_agent:
     _type: react_agent
-    llm_name: openai_cloud_llm
+    # To use a dedicated monitoring model, uncomment:
+    # llm_name: monitoring_openai_llm
+    llm_name: monitoring_openai_llm
     tool_names:
       - kis-trading-mcp-tool
       - mcp-news-get-market-news

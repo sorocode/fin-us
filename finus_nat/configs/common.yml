@@ -3,7 +3,7 @@ functions:
   fe_stub:
     _type: fe_stub
 
-  # fin-us/mcp-news(stdio Node) →  Playwright 네이버 종목 뉴스 3건
+  # fin-us/mcp-news(stdio Node) →  네이버 종목 뉴스 3건
   mcp-news-get-market-news:
     _type: finus_market_news
 
@@ -15,19 +15,14 @@ functions:
   mcp-news-get-research-reports:
     _type: finus_research_reports
 
-  # Kis Trading MCP(SSE, Docker 기본 kis-trading-mcp:3000)
-  kis-trading-mcp-tool:
-    _type: finus_account_balance
-    mcp_transport: sse
-    mcp_url: ${FINUS_KIS_TRADING_MCP_URL:-http://kis-trading-mcp:3000/sse}
-    trading_tool_name: get_balance
-
 llms:
   openai_cloud_llm:
     _type: openai
+    # Shared key source: fin-us/backend/.env -> OPENAI_API_KEY
     api_key: ${OPENAI_API_KEY}
-    base_url: ${OPENAI_API_BASE_URL:-https://api.openai.com/v1}
-    model_name: ""
+    base_url: ${OPENAI_API_BASE_URL:-${OPENAI_BASE_URL:-https://api.openai.com/v1}}
+    model_name: ${OPENAI_CHAT_MODEL:-gpt-5.4-mini}
+
 
   ollama_llm:
     _type: openai

@@ -1,9 +1,19 @@
 base: news_agent.yml
 
+llms:
+  # Optional recommend-specific OpenAI model config (uncomment when needed).
+  recommend_openai_llm:
+    _type: openai
+    api_key: ${OPENAI_API_KEY}
+    base_url: ${OPENAI_API_BASE_URL:-${OPENAI_BASE_URL:-https://api.openai.com/v1}}
+    model_name: ${RECOMMEND_OPENAI_CHAT_MODEL:-gpt-5.4-mini}
+
 functions:
   recommend_agent:
     _type: react_agent
-    llm_name: openai_cloud_llm
+    # To use a dedicated recommend model, uncomment:
+    # llm_name: recommend_openai_llm
+    llm_name: recommend_openai_llm
     tool_names:
       - mcp-news-get-market-news
       - mcp-news-get-investor-trading
