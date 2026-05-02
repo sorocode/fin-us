@@ -12,6 +12,16 @@
 /[Uu]ser[Ss]ettings/
 *.log
 
+# Keep the generated Unity WebGL build in git so teammates can run the frontend
+# without installing Unity. Non-WebGL standalone build artifacts stay ignored.
+!/[Bb]uild/
+/[Bb]uild/*
+!/[Bb]uild/index.html
+!/[Bb]uild/[Bb]uild/
+!/[Bb]uild/[Bb]uild/**
+!/[Bb]uild/TemplateData/
+!/[Bb]uild/TemplateData/**
+
 # By default unity supports Blender asset imports, *.blend1 blender files do not need to be commited to version control.
 *.blend1
 *.blend1.meta
