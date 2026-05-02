@@ -452,6 +452,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DashboardUiController
   apiBaseUrl: http://localhost:8000
+  uiFont: {fileID: 12800000, guid: 1d1678f6cfd13634ab402b7caa51bc91, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

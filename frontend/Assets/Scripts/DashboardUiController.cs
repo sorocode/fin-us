@@ -7,6 +7,7 @@ using UnityEngine.UIElements;
 public class DashboardUiController : MonoBehaviour
 {
     [SerializeField] private string apiBaseUrl = "http://localhost:8000";
+    [SerializeField] private Font uiFont;
 
     private ApiClient apiClient;
 
@@ -43,6 +44,7 @@ public class DashboardUiController : MonoBehaviour
     private void OnEnable()
     {
         var root = GetComponent<UIDocument>().rootVisualElement;
+        ApplyUiFont(root);
 
         stockInput = root.Q<TextField>("stock-input");
         providerSelect = root.Q<DropdownField>("provider-select");
@@ -126,16 +128,38 @@ public class DashboardUiController : MonoBehaviour
             return;
         }
 
-        sourceNewsListView.makeItem = () => new Label();
+        sourceNewsListView.makeItem = () =>
+        {
+            var label = new Label();
+            ApplyUiFont(label);
+            return label;
+        };
         sourceNewsListView.bindItem = (element, index) =>
         {
             if (element is Label label)
             {
+                ApplyUiFont(label);
                 label.text = sourceNewsItems[index];
             }
         };
         sourceNewsListView.itemsSource = sourceNewsItems;
         sourceNewsListView.Rebuild();
+    }
+
+    private void ApplyUiFont(VisualElement element)
+    {
+        if (uiFont == null || element == null)
+        {
+            return;
+        }
+
+        element.style.unityFont = uiFont;
+        element.style.unityFontDefinition = FontDefinition.FromFont(uiFont);
+
+        for (var i = 0; i < element.childCount; i++)
+        {
+            ApplyUiFont(element[i]);
+        }
     }
 
     private void OnFetchNewsClicked()
