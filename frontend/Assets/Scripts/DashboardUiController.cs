@@ -1,12 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 [RequireComponent(typeof(UIDocument))]
 public class DashboardUiController : MonoBehaviour
 {
-    [SerializeField] private string apiBaseUrl = "http://localhost:8000";
+    [SerializeField] private string apiBaseUrl = "http://localhost:8787";
     [SerializeField] private Font uiFont;
 
     private ApiClient apiClient;
@@ -88,6 +89,11 @@ public class DashboardUiController : MonoBehaviour
             }
         }
 
+        if (stockInput != null)
+        {
+            stockInput.RegisterCallback<FocusInEvent>(OnStockInputFocused);
+        }
+
         if (balanceReportField != null)
         {
             balanceReportField.multiline = true;
@@ -102,8 +108,38 @@ public class DashboardUiController : MonoBehaviour
 
     private void OnDisable()
     {
+        if (stockInput != null)
+        {
+            stockInput.UnregisterCallback<FocusInEvent>(OnStockInputFocused);
+        }
+
         UnregisterButtonCallbacks();
     }
+
+    private void OnStockInputFocused(FocusInEvent evt)
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        RequestWebTextInput(stockInput?.value ?? string.Empty);
+#endif
+    }
+
+    public void OnWebStockInputChanged(string value)
+    {
+        if (stockInput != null)
+        {
+            stockInput.value = value ?? string.Empty;
+        }
+    }
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [DllImport("__Internal")]
+    private static extern void FinUsPromptTextInput(string gameObjectName, string currentValue);
+
+    private void RequestWebTextInput(string currentValue)
+    {
+        FinUsPromptTextInput(gameObject.name, currentValue ?? string.Empty);
+    }
+#endif
 
     private void RegisterButtonCallbacks()
     {

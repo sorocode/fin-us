@@ -150,6 +150,7 @@ public class ApiClient
             }
         }
 
-        return $"{fallbackPrefix}: {request.error}";
+        var errorDetail = string.IsNullOrWhiteSpace(request.error) ? request.result.ToString() : request.error;
+        return $"{fallbackPrefix}: {errorDetail} (url={request.url}, status={request.responseCode})";
     }
 }

@@ -1706,6 +1706,22 @@ function dbg(text) {
       }
     }
 
+  function _FinUsPromptTextInput(gameObjectNamePtr, currentValuePtr) {
+      var gameObjectName = UTF8ToString(gameObjectNamePtr);
+      var currentValue = UTF8ToString(currentValuePtr);
+  
+      setTimeout(function () {
+        var nextValue = window.prompt("종목을 입력하세요.", currentValue || "");
+        if (nextValue === null) {
+          return;
+        }
+  
+        if (window.finusUnityInstance && window.finusUnityInstance.SendMessage) {
+          window.finusUnityInstance.SendMessage(gameObjectName, "OnWebStockInputChanged", nextValue);
+        }
+      }, 0);
+    }
+
   function _GetJSLoadTimeInfo(loadTimePtr) {
     loadTimePtr = (loadTimePtr >> 2);
     HEAPU32[loadTimePtr] = Module.pageStartupTime || 0;
@@ -16628,6 +16644,7 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('fetchSettings');
 }
 var wasmImports = {
+  "FinUsPromptTextInput": _FinUsPromptTextInput,
   "GetJSLoadTimeInfo": _GetJSLoadTimeInfo,
   "GetJSMemoryInfo": _GetJSMemoryInfo,
   "JS_Accelerometer_IsRunning": _JS_Accelerometer_IsRunning,

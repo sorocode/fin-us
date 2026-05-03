@@ -62,6 +62,7 @@
         createUnityInstance(canvas, config, (progress) => {
           document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
         }).then((unityInstance) => {
+          window.finusUnityInstance = unityInstance;
           document.querySelector("#unity-loading-bar").style.display = "none";
           var profile = unityProfiler.createButton(unityInstance);
           profile.id = "unity-profiler-button";
