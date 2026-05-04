@@ -18,6 +18,7 @@ functions:
       - mcp-news-get-research-reports
     verbose: false
     use_native_tool_calling: false
+    max_history: 8000
     parse_agent_response_max_retries: 2
     raise_on_parsing_failure: false
     additional_instructions: |

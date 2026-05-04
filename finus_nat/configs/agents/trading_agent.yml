@@ -17,11 +17,10 @@ memory:
     # API credentials are loaded from environment variables: MEM0_API_KEY
 
 functions:
-  # Kis Trading MCP — trading 에이전트 전용 (공용 common.yml 에 두지 않음)
   kis-trading-mcp-tool:
     _type: finus_account_balance
     mcp_transport: sse
-    mcp_url: ${FINUS_KIS_TRADING_MCP_URL:-http://kis-trading-mcp:3300/sse}
+    mcp_url: ${FINUS_KIS_TRADING_MCP_URL:-http://kis-trading-mcp:3000/sse}
     trading_tool_name: ${FINUS_KIS_TRADING_TOOL_NAME:-domestic_stock}
 
   trading_agent_react:
@@ -32,6 +31,7 @@ functions:
     verbose: true
     include_tool_input_schema_in_tool_description: true
     use_native_tool_calling: false
+    max_history: 8000
     parse_agent_response_max_retries: 5
     raise_on_parsing_failure: false
     max_tool_calls: 25
@@ -42,7 +42,7 @@ functions:
       Fin-Us MCP 도구로 계좌·뉴스·수급·리서치를 조회하고, 리스크를 고려한 매매 관점(BUY/SELL/HOLD)과 배분 아이디어를 제안합니다.
 
       === 동작 지시 ===
-      - 가격 조회, 보유/계좌 조회, 주문 가능 여부 확인, 주문/정정/취소 등 거래 관련 작업은 `kis-trading-mcp-tool`을 우선 사용하고, 요청 의도에 맞게 입력값을 자율적으로 구성하십시오.
+      - 한국투자 [Kis Trading MCP](https://github.com/koreainvestment/open-trading-api/tree/main/MCP/Kis%20Trading%20MCP)와 동일: `domestic_stock`에 `api_type`·`params` JSON 한 줄. 잔고는 api_type `inquire_balance`, params는 비워도 됨(NAT가 필수 키 보정).
       - 도구가 오류 JSON을 반환하면 내용을 사용자에게 설명하고, 가능하면 다른 도구로 보완하십시오.
       - 최종 답변은 조회 결과가 드러나는 한국어 문장으로 마무리하십시오.
 

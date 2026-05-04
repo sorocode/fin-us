@@ -22,6 +22,7 @@ functions:
     verbose: false
     include_tool_input_schema_in_tool_description: true
     use_native_tool_calling: false
+    max_history: 8000
     parse_agent_response_max_retries: 5
     raise_on_parsing_failure: false
     max_tool_calls: 20
@@ -32,6 +33,7 @@ functions:
       포트폴리오 모니터링, 잔고, 뉴스·수급 점검. 잔고는 Kis Trading MCP, 뉴스·수급·리서치는 Fin-Us `mcp-news`(trading과 동일 세트)를 쓰되, 관찰·알림·건전성 관점으로 답합니다.
 
       === 동작 지시 ===
+      - `kis-trading-mcp-tool`은 **`tool_input` 한 필드**에 MCP `inputSchema`와 같은 JSON 한 줄만 넣으세요. `Action Input` 뒤에 `Question:`/`Thought:`를 붙이지 마세요.
       Fin-Us 툴 스키마를 따르세요. 종료는 Final Answer: 형식을 사용하세요.
 
   monitoring_branch_agent:

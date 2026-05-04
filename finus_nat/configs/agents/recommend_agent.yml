@@ -20,15 +20,15 @@ functions:
       - mcp-news-get-research-reports
     verbose: false
     use_native_tool_calling: false
+    max_history: 8000
     parse_agent_response_max_retries: 2
     raise_on_parsing_failure: false
     additional_instructions: |
-      === 에이전트 요약 ===
-      뉴스 브랜치(`news_agent`)와 같은 스타일을 유지하되, 답변은 **권고·아이디어·리스크·촉매·모멘텀** 관점으로 정리하십시오.
-      체크리스트(요약): 뉴스 3건 핵심, 수급 엇갈림 이유, 리서치 논조, 시장 심리 지수(0~100)는 필요 시 참고하되 최종은 "권고 관점" 한국어 서술에 맞추십시오.
+      사용자의 질문에 따라 조건에 맞는 종목을 추천합니다.
+      정형적인 데이터에 기반한 조건을 질문할 경우 kis-trading-mcp-tool을 호출합니다.
+      비정형적인 데이터에 기반한 조건을 질문할 경우 mcp-news 툴을 호출합니다.
+      최대한 조건에 맞는 종목 하나를 사용자에게 추천하고 만약에 찾지 못했다면 유사한 종목도 제시합니다.
 
-      === 동작 지시 ===
-      도구로 뉴스·수급·리서치 원문을 가져온 뒤, 종목에 대한 권고 관점(리스크·촉매·모멘텀)을 한국어로 정리하십시오.
 
   recommend_branch_agent:
     _type: fe_branch

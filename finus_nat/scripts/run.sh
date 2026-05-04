@@ -102,4 +102,63 @@ if agent_target.exists():
 PY
 fi
 
-uv run --project "${FE_PKG}" nat run --config_file "${FE_PKG}/configs/router.yml" --input "${1:-Hello}"
+_CONFIG_FILE="${FINUS_NAT_CONFIG_FILE:-${FE_PKG}/configs/router.yml}"
+_CHAT_PORT="${FINUS_CHAT_PORT:-8765}"
+_CHAT_URL="${FINUS_NAT_URL:-}"
+
+# Multi-turn chat: NAT OpenAI-compatible API keeps full `messages` (supervisor + agents see history).
+#   REPL: scripts/chat_repl.py — streaming ON by default; stderr shows NAT ``intermediate_data`` (CoT / steps).
+#   FINUS_CHAT_COT=0  단계 출력 끔  |  FINUS_CHAT_STREAM=0  비스트림 한 방 응답
+#   FINUS_CHAT_COLOR=0  stderr ANSI 끔
+#   ./scripts/run.sh chat              # 로컬에서 nat serve 띄운 뒤 REPL
+#   ./scripts/run.sh -chat             # 위와 동일(오타/관용 별칭)
+#   ./scripts/run.sh chat 첫 질문     # 첫 줄 입력 생략
+#   FINUS_NAT_URL=http://127.0.0.1:8000 ./scripts/run.sh chat   # 이미 떠 있는 서버에만 붙기
+# One-shot (기존): ./scripts/run.sh "질문"
+_run_mode="once"
+if [[ "${1:-}" == "chat" ]] || [[ "${1:-}" == "-chat" ]] || [[ "${1:-}" == "-i" ]] || [[ "${1:-}" == "--interactive" ]]; then
+  _run_mode="chat"
+  shift
+fi
+
+if [[ "${_run_mode}" == "chat" ]]; then
+  _own_serve=0
+  _serve_pid=""
+  if [[ -z "${_CHAT_URL}" ]]; then
+    _CHAT_URL="http://127.0.0.1:${_CHAT_PORT}"
+    _own_serve=1
+    echo "Starting NAT (fastapi) at ${_CHAT_URL} …" >&2
+    uv run --project "${FE_PKG}" nat serve --config_file "${_CONFIG_FILE}" --host 127.0.0.1 --port "${_CHAT_PORT}" &
+    _serve_pid=$!
+    _deadline=$((SECONDS + 90))
+    until curl -sf "${_CHAT_URL}/health" >/dev/null 2>&1; do
+      if ! kill -0 "${_serve_pid}" 2>/dev/null; then
+        echo "NAT serve process exited before /health became ready." >&2
+        exit 1
+      fi
+      if [[ "${SECONDS}" -ge "${_deadline}" ]]; then
+        echo "Timed out waiting for ${_CHAT_URL}/health" >&2
+        kill "${_serve_pid}" 2>/dev/null || true
+        exit 1
+      fi
+      sleep 0.4
+    done
+  fi
+
+  _cleanup_chat() {
+    if [[ "${_own_serve}" == "1" && -n "${_serve_pid}" ]]; then
+      kill "${_serve_pid}" 2>/dev/null || true
+      wait "${_serve_pid}" 2>/dev/null || true
+    fi
+  }
+  trap _cleanup_chat EXIT INT TERM
+
+  export FINUS_NAT_URL="${_CHAT_URL}"
+  export FINUS_CHAT_INITIAL="${*:-}"
+  # Do not use `python - <<EOF`: that ties stdin to the heredoc and `input()` gets EOF immediately.
+  _repl_py="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/chat_repl.py"
+  PYTHONUNBUFFERED=1 uv run --project "${FE_PKG}" python "${_repl_py}"
+  exit 0
+fi
+
+uv run --project "${FE_PKG}" nat run --config_file "${_CONFIG_FILE}" --input "${1:-Hello}"

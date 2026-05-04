@@ -28,3 +28,4 @@ if _FINUS_NAT_ENV.is_file():
 from nat_finus_nat import branch  # noqa: E402, F401
 from nat_finus_nat import finus_api  # noqa: E402, F401
 from nat_finus_nat import stub  # noqa: E402, F401
+from nat_finus_nat import supervisor  # noqa: E402, F401

@@ -22,6 +22,7 @@ functions:
       - kis-api-daily-trades
     verbose: false
     use_native_tool_calling: false
+    max_history: 8000
     parse_agent_response_max_retries: 2
     raise_on_parsing_failure: false
     accept_direct_answer_without_react_format: false
