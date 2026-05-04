@@ -26,7 +26,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from openai import AsyncOpenAI
-from pydantic import BaseModel, Field
+from pydantic import ConfigDict
+from pydantic import BaseModel
+from pydantic import Field
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +116,15 @@ class CommonResponse(BaseModel):
     status: str = "success"
     data: dict[str, Any] | None = None
     message: str | None = None
+
+
+class ChatProxyRequest(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    messages: list[dict[str, Any]]
+    model: str | None = None
+    stream: bool | None = False
+    temperature: float | None = None
 
 
 async def _llm_openai_chat(user_msg: str) -> str:
@@ -359,6 +370,34 @@ async def analyze_stock(
     raw = await _llm_chat(key, user_msg)
     data = _analysis_from_nat_text(str(raw), stock)
     return {"status": "success", "data": data}
+
+
+@app.post("/api/v1/chat", tags=["AI Agent"])
+async def chat_with_nat(payload: ChatProxyRequest):
+    url = f"{NAT_BASE_URL}/v1/chat/completions"
+    body = payload.model_dump(exclude_none=True)
+    body.setdefault("model", NAT_CHAT_MODEL)
+    body.setdefault("stream", False)
+
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as client:
+            resp = await client.post(url, json=body)
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"NAT에 연결할 수 없습니다 ({url}): {exc}",
+        ) from exc
+
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+
+    try:
+        return resp.json()
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"NAT JSON 파싱 실패: {exc}; body[:800]={resp.text[:800]!r}",
+        ) from exc
 
 
 @app.get("/api/v1/trading/trend", response_model=CommonResponse, tags=["Market Data"])
