@@ -40,8 +40,12 @@ _rm_if_exists() {
   fi
 }
 
+# 레거시 Vite 프론트 (frontend-react) 잔여물
 _rm_if_exists "${ROOT}/frontend-react/node_modules"
 _rm_if_exists "${ROOT}/frontend-react/dist"
+# Unity 캐시 (에디터가 재생성)
+_rm_if_exists "${ROOT}/frontend/Temp"
+_rm_if_exists "${ROOT}/frontend/Logs"
 _rm_if_exists "${ROOT}/mcp-news/node_modules"
 _rm_if_exists "${ROOT}/mcp-trading/node_modules"
 _rm_if_exists "${ROOT}/backend/venv"

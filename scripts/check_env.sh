@@ -72,6 +72,13 @@ else
   echo "  ✓ docker-compose.yml present"
 fi
 
+if [[ -d "${FIN_FRONTEND:-}" ]]; then
+  echo "  ✓ Unity frontend dir (${FIN_FRONTEND})"
+else
+  echo "  ! Unity frontend missing — expected ${FIN_FRONTEND:-<unset>} (FIN_FRONTEND from scripts/_env.sh)" >&2
+  warn=1
+fi
+
 echo "  · Ollama: optional. NAT defaults to OpenAI; for local Ollama see finus_nat/configs/common.yml (ollama_llm)."
 if command -v ollama >/dev/null 2>&1; then
   echo "    - ollama CLI present"

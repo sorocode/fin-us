@@ -32,4 +32,5 @@ else
 fi
 export FINUS_NAT_DIR="${FIN_US_INTEGRATE_ROOT}/finus_nat"
 export FIN_BACKEND="${FIN_US_DIR}/backend"
-export FIN_FRONTEND="${FIN_US_DIR}/frontend-react"
+# Unity UI Toolkit 클라이언트 (`frontend/`, 폴더명 변경 시 여만 수정)
+export FIN_FRONTEND="${FIN_US_DIR}/frontend"
